@@ -1,2 +1,2 @@
 # hyperspacesim
-Hyperspectral and Multispectral Space Simulator
+Hyperspectral and Multispectral Space Imaging Simulator
