@@ -1,0 +1,17 @@
+{
+    "Aluminium_bsdf":{
+        "type": "diffuse",
+        "reflectance": {
+            "type": "spectrum",
+            "filename": "Spectra\\material_aluminium.spd"
+        }
+
+    },
+    "solar_panel_glass":{
+
+    },
+    "gold_mli":{
+
+    }
+
+}
