@@ -1,11 +1,2 @@
-# Scenes folder (Stores example scene files)
-matpreview
-
 # pycache
 __pycache__
-
-# Development environments
-envs
-
-# Jupyter notebooks used for prototyping
-notebooks
