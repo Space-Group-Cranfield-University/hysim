@@ -9,12 +9,12 @@ class SPDReader:
     doc string
     '''
     _wavelength_column_index = 0
-    _sensitivity_column_index = 1
+    _value_column_index = 1
 
     def __init__(self, file_location):
         self.file_location = file_location
         self._wavelengths = self.read_file_column(self._wavelength_column_index)
-        self._sensitivities = self.read_file_column(self._sensitivity_column_index)
+        self._values = self.read_file_column(self._value_column_index)
 
     def read_file_column(self, column):
 
@@ -31,5 +31,5 @@ class SPDReader:
         return self._wavelengths
 
     @property
-    def sensitivities(self):
-        return self._sensitivities
+    def values(self):
+        return self._values
