@@ -4,7 +4,7 @@ doc string
 '''
 
 import numpy as np
-from hyperspacesim.sim import utils as ut
+import hyperspacesim.utils.spd_reader as ut
 
 class SpectralBands:
     '''
@@ -83,12 +83,13 @@ class SpectralSensor:
             spectral_response_file,
             number_of_bands,
             film_resolution=(768, 576),
-            component_format="float16",
+            component_format="float32",
         ):
         self.name = sensor_name
         self.film_resolution = film_resolution
         self.component_format = component_format
-        self.bands = SpectralBands(number_of_bands, spectral_response_file)
+        self.spectral_response = SpectralBands(number_of_bands, spectral_response_file)
+
 
 class PerspectiveCamera(SpectralSensor):
     def __init__(
@@ -105,8 +106,7 @@ class PerspectiveCamera(SpectralSensor):
             far_clip = 10000
         ):
 
-        super(SpectralSensor).__init__(
-            self,
+        super().__init__(
             sensor_name,
             spectral_response_file,
             number_of_bands,
@@ -138,8 +138,7 @@ class ThinLenseCamera(PerspectiveCamera):
             focus_distance = 0.0
         ):
 
-        super(PerspectiveCamera).__init__(
-            self,
+        super().__init__(
             sensor_name,
             spectral_response_file,
             number_of_bands,
@@ -154,4 +153,3 @@ class ThinLenseCamera(PerspectiveCamera):
 
         self.aperture_radius = aperture_radius
         self.focus_distance = focus_distance
-
