@@ -14,7 +14,7 @@ class Chaser:
         pass
 
     def add_sensor(self, sensor_name="sensor", sensor_type="default"):
-        self.list_of_sensors.update(sensors.)
+        self.list_of_sensors.update()
         
 
     def remove_sensor(self):

@@ -1,10 +1,9 @@
 '''
 Simple test script
 '''
-#from pprint import pprint
-#import importlib.resources as rs
-import hyperspacesim.data as data
-import hyperspacesim.sim.sensors as s
+import json
+import pretty_errors
+from hyperspacesim.data import data_paths
 
 if __name__ == "__main__":
 
@@ -20,6 +19,10 @@ if __name__ == "__main__":
     #     aperture_radius=0.2
     # )
 
-    data_file = data.materials
 
-    
+    print(data_paths.get_spectrum_path("sensors", "VNIR"))
+
+    #with open("hyperspacesim/data/data_list.json", 'r', encoding="utf-8") as j:
+    #    contents = json.loads(j.read())
+
+    #print(contents["sensors"])
