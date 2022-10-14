@@ -1,0 +1,28 @@
+{
+"sensors": {
+        "VNIR": {
+            "spectrum_file": "vnir.spd",
+            "path": "hyperspacesim.data.sensors"
+        }
+    },
+    "Aluminium": {
+        "materials": {
+        "spectrum_file": "Al.spd",
+            "path": "hyperspacesim.data.materials"
+        },
+        "Gold_MLI": {
+            "spectrum_file": "Au.spd",
+            "path": "hyperspacesim.data.materials"
+        },
+        "Solar_Cells": {
+            "spectrum_file": "GaAs_Ge_solar_cell.spd",
+            "path": "hyperspacesim.data.materials"
+        }
+    },
+    "light_sources": {
+        "Sun": {
+            "spectrum_file": "wehrli85.spd",
+            "path": "hyperspacesim.data.sensors"
+        }
+    }
+}
