@@ -4,7 +4,7 @@ doc string
 '''
 
 import numpy as np
-import hyperspacesim.utils.spd_reader as ut
+import hyperspacesim.data as data
 
 class SpectralBands:
     '''
@@ -20,11 +20,11 @@ class SpectralBands:
 
 
     def __get_wavelengths_from_file(self):
-        return ut.SPDReader(file_location=self._spectral_response_file).wavelengths
+        return data.SPDReader(file_location=self._spectral_response_file).wavelengths
 
 
     def __get_sensitivities_from_file(self):
-        return ut.SPDReader(file_location=self._spectral_response_file).sensitivities
+        return data.SPDReader(file_location=self._spectral_response_file).sensitivities
 
 
     def __define_wavelengths(self, number_of_bands):
@@ -79,13 +79,11 @@ class SpectralBands:
 class SpectralSensor:
     def __init__(
             self,
-            sensor_name,
             spectral_response_file,
             number_of_bands,
             film_resolution=(768, 576),
             component_format="float32",
         ):
-        self.name = sensor_name
         self.film_resolution = film_resolution
         self.component_format = component_format
         self.spectral_response = SpectralBands(number_of_bands, spectral_response_file)
