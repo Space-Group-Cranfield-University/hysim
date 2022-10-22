@@ -1,72 +1,90 @@
 # Spectral Sensors
 '''
-doc string
+Classes to hold sensor parameters and represent them as a dict
 '''
 
-import numpy as np
-import hyperspacesim.data as data
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from hyperspacesim.sim.spectra import FilmSensitivitySpectrum
+### Film ###
 
-class SpectralSensor:
-    '''
-    Spectral Sensor Class.
-    '''
-    def __init__(
-            self,
-            spectrum_file,
-            number_of_bands,
-            film_resolution=(768, 576),
-            component_format="float32",
-        ):
-        self.film_resolution = film_resolution
-        self.component_format = component_format
-        self.spectral_response = SpectralBands(number_of_bands, spectrum_file)
+@dataclass
+class SpectralFilm:
+    '''Holds data on spectral film'''
+    spectrum: FilmSensitivitySpectrum
+    resolution: tuple = (768, 576)
+    component_format: str = "float32"
 
+    def build_dict(self):
+        '''Builts the film dict using attributes and adds on spectrum dicts'''
+        film_dict = {"film":{
+                "type": "specfilm",
+                "width": self.resolution[0],
+                "height": self.resolution[1],
+                "component_format": self.component_format
+                }}
+        film_dict["film"].update(self.spectrum.build_dict())
 
-class PerspectiveCamera(SpectralSensor):
-    def __init__(
-            self,
-            spectrum_file,
-            number_of_bands,
-            field_of_view,
-            film_resolution=(768, 576),
-            component_format="float16",
-            focal_length = "50mm",
-            fov_axis = "x",
-            near_clip = 0.01,
-            far_clip = 10000
-        ):
-
-        super().__init__(
-            spectrum_file,
-            number_of_bands,
-            film_resolution,
-            component_format,
-        )
-
-        self.field_of_view = field_of_view
-        self.focal_length = focal_length
-        self.fov_axis = fov_axis
-        self.near_clip = near_clip
-        self.far_clip = far_clip
+        return film_dict
 
 
+@dataclass
+class Camera(ABC):
+    '''Abstract class to based'''
+    near_clip: float = 0.01
+    far_clip: float = 1e+8
+
+    @abstractmethod
+    def build_dict(self):
+        '''Abstract method that builds dict from camera parameters.
+        Implement in subclasses'''
+
+
+@dataclass
+class PerspectiveCamera(Camera):
+    '''Holds parameters for perspective cameras'''
+    field_of_view: float = None
+    fov_axis: str = "x"
+
+    def build_dict(self):
+        '''Builds dict from parameters'''
+        return {
+            "type": "perspective",
+            "fov": self.field_of_view,
+            "fov_axis": self.fov_axis,
+            "near_clip": self.near_clip,
+            "far_clip": self.far_clip
+        }
+
+
+@dataclass
 class ThinLenseCamera(PerspectiveCamera):
-    def __init__(
-            self,
-            spectrum_file,
-            number_of_bands,
-            field_of_view,
-            aperture_radius,
-            film_resolution=(768, 576),
-            component_format="float16",
-            focal_length = "50mm",
-            fov_axis = "x",
-            near_clip = 0.01,
-            far_clip = 10000,
-            focus_distance = 0.0
-        ):
+    '''Holds parameters for thin lense cameras'''
+    aperture_radius: float = None
+    focus_distance: float = None
 
-        super().__init__()
+    def build_dict(self):
+        '''Builds dict from parameters'''
+        return {
+            "type": "perspective",
+            "aperture_radius": self.aperture_radius,
+            "focus_distance": self.focus_distance,
+            "fov": self.field_of_view,
+            "fov_axis": self.fov_axis,
+            "near_clip": self.near_clip,
+            "far_clip": self.far_clip
+        }
 
-        self.aperture_radius = aperture_radius
-        self.focus_distance = focus_distance
+
+@dataclass
+class SpectralSensor:
+    '''Holds spectral film and camera data that makes up a sensor'''
+    film: SpectralFilm
+    camera: Camera
+
+    def build_dict(self):
+        '''Builds dictionary for spectral sensor out of camera, film and sampler'''
+        sensor_dict = self.camera.build_dict()
+        sensor_dict.update(self.film.build_dict())
+
+        return sensor_dict
