@@ -6,6 +6,7 @@ Classes to hold sensor parameters and represent them as a dict
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hyperspacesim.sim.spectra import FilmSensitivitySpectrum
+
 ### Film ###
 
 @dataclass
@@ -27,6 +28,7 @@ class SpectralFilm:
 
         return film_dict
 
+### Camera ###
 
 @dataclass
 class Camera(ABC):
@@ -75,6 +77,8 @@ class ThinLenseCamera(PerspectiveCamera):
             "far_clip": self.far_clip
         }
 
+
+### Spectral Sensor ###
 
 @dataclass
 class SpectralSensor:
