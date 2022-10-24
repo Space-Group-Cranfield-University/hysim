@@ -1,16 +1,16 @@
-# Target class to represent the chasing spacecraft. All rendered images
-# representative of sensors onboard.
+''' Classes to build up target object'''
 
 class Target:
+    '''Class that holds meshes and coordinates of model to represent target. '''
     def __init__(self) -> None:
-        self.model={}
+        self.target_model=[]
         self.position = []
         self.attitude = []
     
-    def update_position(self):
+    def set_position(self):
         pass
 
-    def update_attitude(self):
+    def set_attitude(self):
         pass
 
     def add_part(self):
