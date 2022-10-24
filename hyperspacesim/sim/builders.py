@@ -1,20 +1,15 @@
 '''Classes to construct complex chaser and target instances'''
-
-class SensorBuilder:
-    '''Build sensor from camera, film and spectrum input files'''
-    def __init__(self) -> None:
-        self.reset()
-
-    def reset():
-        self.
-
-
-
-
+        
 class SceneBuilder:
     '''Constructs the overall scene object'''
     def __init__(self):
-        pass
+        self._scene_dict = {
+            "type": "scene"
+        }
+
+    def build_sensor(sensor_config):
+        
+
 
     def set_integrator(self):
         pass
