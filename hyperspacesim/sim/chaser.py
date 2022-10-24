@@ -1,21 +1,29 @@
-# Chaser class to represent the chasing spacecraft. All rendered images
-# representative of sensors onboard.
+'''Classes to represent the chasing spacecraft'''
 
 class Chaser:
+    '''Chasing spacecraft: sensors and their location'''
     def __init__(self):
-        self.list_of_sensors = {}
+        self.list_of_sensors = []
         self.position = []
         self.attitude = []
     
-    def update_position(self):
-        pass
-
-    def update_attitude(self):
-        pass
-
-    def add_sensor(self, sensor_name="sensor", sensor_type="default"):
-        self.list_of_sensors.update()
-        
+    def add_sensor(self, sensor):
+        self.list_of_sensors.append()
 
     def remove_sensor(self):
         pass
+
+    def set_position(self):
+        pass
+
+    def set_attitude(self):
+        pass
+
+    def build_dict():
+        pass    
+
+
+
+class ChaserBuilder:
+    '''Builder class to costruct sensors and add them to chaser'''
+    pass
