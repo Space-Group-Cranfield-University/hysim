@@ -6,7 +6,6 @@ from hyperspacesim.sim import spectrum, sensors
 from hyperspacesim.data import spd_reader, data_paths
 
 
-
 if __name__ == "__main__":
 
     print("\nTesting...\n\n")
