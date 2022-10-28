@@ -1,39 +1,54 @@
 '''
-Simple test script
+Test script (will become main())
 '''
 from pprint import pprint
-from hyperspacesim.sim import spectrum, sensors
-from hyperspacesim.data import spd_reader, data_paths
+
+# Inputs
+from hyperspacesim import input_data
+
+# Data handling
+from hyperspacesim.data import spd_reader
+from hyperspacesim.data import data_paths
+from hyperspacesim.hyperspacesim.sim.sensors import SpectralSensor
+
+# Simulator
+from hyperspacesim.sim import sensors
+from hyperspacesim.sim import spectra
 
 
 if __name__ == "__main__":
 
     print("\nTesting...\n\n")
 
-sensor_selection = "VNIR"
-film_resolution = (1920,1080)
-fov = 3.8
-aperture = 0.2
-focus_distance = 100.0
 
-#### Commands ####
-spectrum_path = data_paths.get_spectrum_path("sensors", "VNIR")
+    # Get User Inputs
+    user_inputs = input_data.Configs()
+    user_inputs.load_configs("example_case/")
 
-spectrum_data = spd_reader.SPDReader(spectrum_path)
+    pprint(user_inputs.sensor_config)
+    print("\n")
 
-hyperspectral_bands = spectrum.FilmSensitivitySpectrum(
-    spectrum_data.wavelengths,
-    spectrum_data.values
-)
+    # Film spectrum
+    #spectrum_path = data_paths.get_spectrum_path("sensors", "VNIR")
 
-# Create film
-film = sensors.SpectralFilm(hyperspectral_bands)
+    spectrum_path = user_inputs.sensor_config["spectrum_file"]
 
-# Build camera
-camera = sensors.ThinLenseCamera(
-    field_of_view=3.8,
-    aperture_radius=0.2,
-    focus_distance=100.0
+    spectrum_data = spd_reader.SPDReader(spectrum_path)
+
+    hyperspectral_bands = spectra.FilmSensitivitySpectrum(
+        spectrum_data.wavelengths,
+        spectrum_data.values
     )
 
-vnir_sensor = sensors.SpectralSensor(film, camera)
+    # Create film
+    film = sensors.SpectralFilm(hyperspectral_bands)
+
+    # Build camera
+    camera = sensors.ThinLenseCamera(**user_inputs.sensor_config["camera"])
+
+    vnir_sensor = sensors.SpectralSensor(film, camera)
+
+    pprint(vnir_sensor.build_dict())
+
+
+    print(help(SpectralSensor))
