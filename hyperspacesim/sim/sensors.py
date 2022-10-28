@@ -38,32 +38,17 @@ class Camera(ABC):
 
 
 @dataclass
-class PerspectiveCamera(Camera):
-    '''Holds parameters for perspective cameras'''
+class ThinLenseCamera(Camera):
+    '''Holds parameters for thin lense cameras'''
     field_of_view: float = None
     fov_axis: str = "x"
-
-    def build_dict(self):
-        '''Builds dict from parameters'''
-        return {
-            "type": "perspective",
-            "fov": self.field_of_view,
-            "fov_axis": self.fov_axis,
-            "near_clip": self.near_clip,
-            "far_clip": self.far_clip
-        }
-
-
-@dataclass
-class ThinLenseCamera(PerspectiveCamera):
-    '''Holds parameters for thin lense cameras'''
     aperture_radius: float = None
     focus_distance: float = None
 
     def build_dict(self):
         '''Builds dict from parameters'''
         return {
-            "type": "perspective",
+            "type": "thinlense",
             "aperture_radius": self.aperture_radius,
             "focus_distance": self.focus_distance,
             "fov": self.field_of_view,
@@ -88,3 +73,18 @@ class SpectralSensor:
         return sensor_dict
 
 
+# @dataclass
+# class PerspectiveCamera(Camera):
+#     '''Holds parameters for perspective cameras'''
+#     field_of_view: float = None
+#     fov_axis: str = "x"
+
+#     def build_dict(self):
+#         '''Builds dict from parameters'''
+#         return {
+#             "type": "perspective",
+#             "fov": self.field_of_view,
+#             "fov_axis": self.fov_axis,
+#             "near_clip": self.near_clip,
+#             "far_clip": self.far_clip
+#         }
