@@ -1,0 +1,77 @@
+---
+# ========================================================================
+# Hyperspectral Sensor Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: sensor_config
+user_sensor: True
+
+# Sensor name: ensure any additional sensors do not share names.
+sensor_name: VNIR_Sensor
+
+# Spectrum file location:
+spectrum_file: example_case/sensors/film.spd
+
+# ------------------------------------------------------------------------
+# Camera Parameters
+# ------------------------------------------------------------------------
+# Define the camera properties for the sensor
+camera:
+  # Camera type ThinLense requires field of view, aperture radius and
+  # focus distance to be specified.
+  field_of_view: 3.8 # degrees
+  aperture_radius: 0.2 # meters
+  focus_distance: 100 # meters
+
+# ------------------------------------------------------------------------
+# Film Parameters
+# ------------------------------------------------------------------------
+# Define film properties: Assumed a hyperspectral film
+film:
+  # Interpolates bands for a given spectrum response file. If not
+  # specified the case will use data points in spectrum file.
+  spectral_bands: 55
+  width: 1920
+  height: 1080
+  
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

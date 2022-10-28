@@ -1,0 +1,24 @@
+---
+# ========================================================================
+# User Material Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: material_config
+material_id: diffuse_aluminium
+
+# Material configuration specifies a user BSDF in mitsubas dict format.
+# best to refer to mitsubas documentation on BSDFs.
+material:
+  # First indent: material name
+  antenna_material:
+    # Second indent: material type and its properties
+    type: diffuse
+    reflectance: 
+      type: spectrum
+      # User specifies spectrum file.
+      filename: case/target/materials/aluminium.spd
+
+
+
+  

@@ -1,0 +1,29 @@
+---
+# ========================================================================
+# Case Settings Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: case_config
+
+# ------------------------------------------------------------------------
+# Render Settings
+renderer:
+  - sampler: stratified
+    sample_count: 128 # Multiples of 8
+  - integrator: path
+    max_depth: -1 # -1 for infinite
+
+# ------------------------------------------------------------------------
+# Output Settings
+output:
+  - format: exr
+    file_name: hdr_case_results.exr
+  - format: binary
+    file_name: binary_case_results
+
+# ------------------------------------------------------------------------
+# Log Settings
+log: 
+  save_case_log: True
+  file_name: case_log
