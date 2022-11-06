@@ -9,15 +9,16 @@ from hyperspacesim.sim.spectra import FilmSensitivitySpectrum
 class SpectralFilm:
     '''Holds data on spectral film'''
     spectrum: FilmSensitivitySpectrum
-    resolution: tuple = (768, 576)
+    width: int = 768
+    height: int = 576
     component_format: str = "float32"
 
     def build_dict(self):
         '''Builts the film dict using attributes and adds on spectrum dicts'''
         film_dict = {"film":{
                 "type": "specfilm",
-                "width": self.resolution[0],
-                "height": self.resolution[1],
+                "width": self.width,
+                "height": self.height,
                 "component_format": self.component_format
                 }}
         film_dict["film"].update(self.spectrum.build_dict())
@@ -71,20 +72,3 @@ class SpectralSensor:
         sensor_dict.update(self.film.build_dict())
 
         return sensor_dict
-
-
-# @dataclass
-# class PerspectiveCamera(Camera):
-#     '''Holds parameters for perspective cameras'''
-#     field_of_view: float = None
-#     fov_axis: str = "x"
-
-#     def build_dict(self):
-#         '''Builds dict from parameters'''
-#         return {
-#             "type": "perspective",
-#             "fov": self.field_of_view,
-#             "fov_axis": self.fov_axis,
-#             "near_clip": self.near_clip,
-#             "far_clip": self.far_clip
-#         }
