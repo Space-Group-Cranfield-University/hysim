@@ -29,11 +29,14 @@ camera:
 # ------------------------------------------------------------------------
 # Define film properties: Assumed a hyperspectral film
 film:
-  # Interpolates bands for a given spectrum response file. If not
-  # specified the case will use data points in spectrum file.
-  spectral_bands: 55
   width: 1920
   height: 1080
+
+# Optional inputs to control the rendered bands. If not output the
+# default number in the spectrum file are used.
+spectral_bands:
+  number_of_bands: 55
+  
   
 
   

@@ -8,11 +8,13 @@ file_type: case_config
 
 # ------------------------------------------------------------------------
 # Render Settings
-renderer:
-  - sampler: stratified
-    sample_count: 128 # Multiples of 8
-  - integrator: path
-    max_depth: -1 # -1 for infinite
+integrator:
+  type: stratified
+  sample_count: 128 # Multiples of 8
+
+sampler:
+  type: path
+  max_depth: -1 # -1 for infinite
 
 # ------------------------------------------------------------------------
 # Output Settings
