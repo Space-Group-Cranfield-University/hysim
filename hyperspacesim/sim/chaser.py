@@ -1,29 +1,51 @@
 '''Classes to represent the chasing spacecraft'''
+import mitsuba as mi
+
+class IncompatableTransformError(Exception):
+    '''Raised when two different transforms are used together'''
+    pass
+
 
 class Chaser:
     '''Chasing spacecraft: sensors and their location'''
-    def __init__(self):
-        self.list_of_sensors = []
+    def __init__(self, sensor):
+        self.sensor = sensor
         self.position = []
         self.attitude = []
-    
-    def add_sensor(self, sensor):
-        self.list_of_sensors.append()
+        self.__transform_type = None
 
-    def remove_sensor(self):
-        pass
+    def set_simple_position(self, position_input):
+        self.position = position_input
+        self.__transform_type = "simple"
 
-    def set_position(self):
-        pass
+    def set_simple_attitude(self, attitude_input):
+        try:
+            self.__transform_type == "simple"
+        except IncompatableTransformError:
+            print("Must use simple lookat attitude with simple position")
 
-    def set_attitude(self):
-        pass
+        self.attitude = attitude_input
 
-    def build_dict():
-        pass    
+    def __return_mitsuba_transform(self):
+        return mi.ScalarTransform4f.translate(
+                self.position
+            ).rotate(
+                axis=[1, 0, 0], 
+                angle=self.attitude[0]
+            ).rotate(
+                axis=[0, 1, 0], 
+                angle=self.attitude[1]
+            ).rotate(
+                axis=[0, 0, 1], 
+                angle=self.attitude[2]
+            )
+
+    def build_dict(self):
+        sensor_dict = self.sensor.build_dict()
+        sensor_dict.update({
+            "to_world": self.__return_mitsuba_transform()
+        })
+        return sensor_dict  
+            
 
 
-
-class ChaserBuilder:
-    '''Builder class to costruct sensors and add them to chaser'''
-    pass
