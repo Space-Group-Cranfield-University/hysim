@@ -22,7 +22,7 @@
     "light_sources": {
         "Sun": {
             "spectrum_file": "wehrli85.spd",
-            "path": "hyperspacesim.data.sensors"
+            "path": "hyperspacesim.data.light_sources"
         }
     }
 }
