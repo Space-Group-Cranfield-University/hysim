@@ -1,2 +1,2 @@
-# hyperspacesim
-Hyperspectral and Multispectral Space Imaging Simulator
+# HySim
+A python based package to simulate hyperspectral and multispectral space to space imaging.
