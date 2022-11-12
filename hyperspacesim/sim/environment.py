@@ -1,22 +1,25 @@
-'''Space environment parameters'''
+"""Space environment parameters"""
+from dataclasses import dataclass
 
-from hyperspacesim.sim import spectra
 
+@dataclass
 class Sun:
-    '''Sun object in scene environment'''
+    """Sun object in scene environment"""
+    sun_dict: dict = None
+
     def __init__(self, irradiance_spectrum):
         self.irradiance_spectrum = irradiance_spectrum
         self.sun_position = None
 
     def position_sun_in_simple_3d(self, direction):
-        '''Position sun using simple cartesian direction vector'''
+        """Position sun using simple cartesian direction vector"""
         self.sun_position = direction
-    
+
     def build_dict(self):
-        return {
-        "sun_emitter": {
-            "type": "directional",
-            "direction": self.sun_position, # Sun pointing to +Y in sun-sync orbit
-            "irradiance": self.irradiance_spectrum.build_dict()
-        }}
-    
+        self.sun_dict = {
+            "sun_emitter": {
+                "type": "directional",
+                "direction": self.sun_position,  # Sun pointing to +Y
+                "irradiance": self.irradiance_spectrum.build_dict(),
+            }
+        }
