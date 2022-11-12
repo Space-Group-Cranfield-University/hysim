@@ -14,18 +14,18 @@ file_type: parts_config
 # database_material: chooses a material from the database (cannot be used with user_material)
 # user_material: specifies a user material file (cannot be used with database_material)
 
-# Part list:
-part_list:
-  - name: bus
-    file: case/target/mesh/bus.ply
-    database_material: diffuse_gold_mli 
+# List of components that make up the target:
+components:
+  bus:
+    file: example_case/target/mesh/bus.ply
+    database_material: gold_mli 
 
-  - name: solar_panel
-    file: case/target/mesh/solar_panel.ply
-    database_material: ujt_solar_panel
+  solar_panel:
+    file: example_case/target/mesh/solar_panel.ply
+    database_material: solar_panel_glass
 
-  - name: sar_array
-    file: case/target/mesh/sar.ply
-    user_material: case/target/materials/sar_material.yml
+  sar_array:
+    file: example_case/target/mesh/sar.ply
+    user_material: diffuse_aluminium
 
   

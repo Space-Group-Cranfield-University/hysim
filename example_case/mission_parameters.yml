@@ -10,19 +10,18 @@ file_type: mission_config
 # Target
 target:
   # Specify reference frame used for orbit definition
-  orbit_frame: j2000 # Julian 2000 Earth Centered Inertial
-  vector:
-    x : -2011051.230177616  # meters
-    y : 5389958.356732251   # meters
-    z : 3602487.1772201536  # meters
-    vx: -4287.41843934929   # meters/second
-    vy: -4567.423317385679  # meters/second
-    vz: 4420.787152261861   # meters/second
+  orbit_frame: simple 
+  position: [0, 0, 0]
   
   # Specify reference frame used for attitude
-  attitude_frame: vnb # Velocity, Normal, Binormal
-  attitude:
-    phi   : -0.523599 # rad
-    theta : 0.0       # rad
-    psi   : 0.0       # rad
+  attitude_frame: simple 
+  attitude: [-30, 0, 0]
+
+chaser:
+  orbit_frame: simple 
+  position: [0, 0, 0]
+  
+  # Specify reference frame used for attitude
+  attitude_frame: simple 
+  attitude: [0, 0, 0]
 
