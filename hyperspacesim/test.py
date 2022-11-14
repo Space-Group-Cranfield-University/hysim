@@ -3,16 +3,20 @@ Test script (will become main())
 """
 import matplotlib.pyplot as plt
 
-# Mitsuba
+# Packages
 import mitsuba as mi
+import OpenEXR
+import Imath    
+import numpy as np
 
-# Inputs
+# I/O
 from hyperspacesim import input_data
 
 # Data handling
 from hyperspacesim.data import spd_reader
 
 # Simulator
+from hyperspacesim import renderer
 from hyperspacesim.sim import sensors
 from hyperspacesim.sim import spectra
 from hyperspacesim.sim import environment
@@ -159,11 +163,15 @@ if __name__ == "__main__":
     # Load to mitsuba and run
     #####################################
 
-    mitsuba_scene = mi.load_dict(scene_dict)
-    params = mi.traverse(mitsuba_scene)
-    print(params)
+    sim = renderer.RendererControl()
+    sim.load_scene(scene_dict)
+    sim.run()
 
-    render = mi.render(mitsuba_scene)
-    plt.axis("off")
-    plt.imshow(render[:, :, 30], vmax=0.1, cmap="inferno")
-    plt.show()
+    #####################################
+    # Export to OpenEXR format
+    #####################################
+
+    output = renderer.OutputFormatter(renderer.render)
+
+    case_directory = "example_case/"
+    output.export_as_exr(film, case_directory)
