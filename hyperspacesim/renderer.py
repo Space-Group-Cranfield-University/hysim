@@ -23,8 +23,8 @@ class OutputFormatter:
     def __init__(self, render_data) -> None:
         self.render_data = render_data
 
-    def output_as_exr(self, film, case_directory):
-        bmp_array = np.array(self.render)
+    def export_as_exr(self, film, case_directory):
+        bmp_array = np.array(self.render_data)
         exrHeader = OpenEXR.Header(film.width, film.height)
 
         channels = {}
