@@ -8,6 +8,6 @@ setup(
         'hyperspacesim'
     ],
     entry_points={
-        'console_scripts': ['run-hyperspacesim=hyperspacesim.test_script:main']
+        'console_scripts': ['run-hysim=hyperspacesim.test:main']
     },
 )
