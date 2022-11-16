@@ -1,13 +1,8 @@
 """
 Test script (will become main())
 """
-import matplotlib.pyplot as plt
-
 # Packages
 import mitsuba as mi
-import OpenEXR
-import Imath    
-import numpy as np
 
 # I/O
 from hyperspacesim import input_data
@@ -157,7 +152,7 @@ if __name__ == "__main__":
     scene_dict.update(chaser_satellite.chaser_dict)
     scene_dict.update(sun.sun_dict)
 
-    print(scene_dict)
+    # print(scene_dict)
 
     #####################################
     # Load to mitsuba and run
@@ -171,7 +166,7 @@ if __name__ == "__main__":
     # Export to OpenEXR format
     #####################################
 
-    output = renderer.OutputFormatter(renderer.render)
+    output = renderer.OutputFormatter(sim.render)
 
     case_directory = "example_case/"
     output.export_as_exr(film, case_directory)
