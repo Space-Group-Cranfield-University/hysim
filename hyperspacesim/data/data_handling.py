@@ -28,8 +28,8 @@ def read_json_package_data(path, file):
 
 
 def get_material_from_database(material_name):
-    all_materials_data = read_json_package_data(MATERIAL_PATH, MATERIAL_DATA)
-    material_dict = all_materials_data[material_name]
+    materials_data = read_json_package_data(MATERIAL_PATH, MATERIAL_DATA)
+    material_dict = materials_data[material_name]
 
     if material_dict["type"] == "diffuse":
         filename = material_dict["reflectance"]["filename"]
@@ -38,6 +38,9 @@ def get_material_from_database(material_name):
 
     return material_dict
 
+def get_wehrli85_path():
+    with resources.path(LIGHTSOURCES_PATH, "wehrli85.spd") as path:
+        return path
 
 def list_defined_materials():
     pass
