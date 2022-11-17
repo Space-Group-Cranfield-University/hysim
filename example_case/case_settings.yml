@@ -8,6 +8,8 @@ file_type: case_config
 
 # ------------------------------------------------------------------------
 # Render Settings
+mitsuba_variant: scalar_spectral
+
 sampler:
   type: stratified
   sample_count: 4 # Should be square number (256 is default)
@@ -17,15 +19,13 @@ integrator:
   max_depth: 2 # -1 for infinite
 
 # ------------------------------------------------------------------------
-# Output Settings
-output:
-  - format: exr
-    file_name: hdr_case_results.exr
-  - format: binary
-    file_name: binary_case_results
-
-# ------------------------------------------------------------------------
 # Log Settings
 log: 
   save_case_log: True
   file_name: case_log
+
+# ------------------------------------------------------------------------
+# Output Settings
+output:
+  - format: exr
+    file_name: hdr_case_results.exr
