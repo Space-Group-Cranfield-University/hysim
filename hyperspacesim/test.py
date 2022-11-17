@@ -1,5 +1,5 @@
 """
-Test script (will become main())
+Main client script to run code. Called by user.
 """
 # Packages
 import mitsuba as mi
@@ -9,6 +9,7 @@ from hyperspacesim import input_data
 
 # Data handling
 from hyperspacesim.data import spd_reader
+from hyperspacesim.data import data_handling
 
 # Simulator
 from hyperspacesim import renderer
@@ -20,14 +21,81 @@ from hyperspacesim.sim import target as trgt
 
 
 #################################################################
-# BUILD FUNCTIONS
+# SCENE BUILDING
 #################################################################
-def build_integrator_dict(configs):
-    return {"integrator": configs}
+class SceneBuilder:
+    def __init__(self) -> None:
+        self.user_inputs = None
+        self.integrator = None
+        self.sampler = None
+        self.sun = None
+        self.target = None
+        self.chaser = None
+        self.scene_dict = {"type": "scene"}
+
+    def build_integrator(self, integrator_config):
+        self.integrator = {"integrator": integrator_config}
+
+    def build_sampler(self, sampler_config):
+        self.sampler = {"sampler": sampler_config}
+
+    def build_environment(self, environment_config):
+        sun_direction = [0.2, 0.8, 0.0] # TODO: User chosen position
+
+        # --- Sun --- #
+        irradiance_data = spd_reader.SPDReader(
+            data_handling.get_wehrli85_path()
+        )
+
+        sunlight_spectrum = spectra.IrradianceSpectrum(
+            irradiance_data.wavelengths, irradiance_data.values
+        )
+
+        self.sun = environment.Sun(sunlight_spectrum)
+        self.sun.position_sun_in_simple_3d(sun_direction)
+
+        # Build dict from data:
+        self.sun.build_dict()
+
+    def build_chaser(self, chaser_config):
+        # --- Sensor --- #
+        # Get the spectrum file path
+        spectrum_path = self.user_inputs.sensor_config["spectrum_file"]
+        spectrum_data = spd_reader.SPDReader(spectrum_path)
+
+        # Build the spectral bands
+        hyperspectral_bands = spectra.FilmSensitivitySpectrum(
+            spectrum_data.wavelengths, spectrum_data.values
+        )
+
+        # Build film object
+        film = sensors.SpectralFilm(
+            hyperspectral_bands, **self.user_inputs.sensor_config["film"]
+        )
+
+        # Build camera object
+        camera = sensors.ThinLenseCamera(**self.user_inputs.sensor_config["camera"])
+
+        # Combine into sensor object
+        sensor = sensors.SpectralSensor(film, camera, sampler)
+        sensor.build_dict()
+
+        # --- Chaser Satellite --- #
+        chaser_satellite = chaser.Chaser(sensor)
+        chaser_satellite.set_simple_position(
+            self.user_inputs.mission_config["chaser"]["position"]
+        )
+        chaser_satellite.set_simple_attitude(
+            self.user_inputs.mission_config["chaser"]["position"]
+        )
+
+        chaser_satellite.build_dict()
+        
+
+    def build_target():
 
 
-def build_sampler_dict(configs):
-    return {"sampler": configs}
+    def build_scene_dict():
 
 
 if __name__ == "__main__":
@@ -35,13 +103,13 @@ if __name__ == "__main__":
     print("\nTesting...\n\n")
 
     # Initialise Mitsuba
-    mi.set_variant("scalar_spectral")
+    mi.set_variant("scalar_spectral") # TODO: Set this in case config
 
     #####################################
     # Get User Inputs
     #####################################
     user_inputs = input_data.Configs()
-    user_inputs.load_configs("example_case/")
+    user_inputs.load_configs("example_case/") # TODO: Set this in case config?
 
     # pprint(user_inputs.__dict__)
     # ---------- RENDER SETTINGS ----------
@@ -55,13 +123,11 @@ if __name__ == "__main__":
     #####################################
     # Construct the Scene
     #####################################
-    sun_direction = [0.2, 0.8, 0.0]
 
     # ---------- Create Environment ----------
 
     # --- Sun --- #
-    sun_spectrum_path = user_inputs.sensor_config["spectrum_file"]
-    irradiance_data = spd_reader.SPDReader(sun_spectrum_path)
+    irradiance_data = spd_reader.SPDReader(data_handling.get_wehrli85_path())
 
     sunlight_spectrum = spectra.IrradianceSpectrum(
         irradiance_data.wavelengths, irradiance_data.values
