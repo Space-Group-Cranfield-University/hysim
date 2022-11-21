@@ -10,6 +10,7 @@ from hyperspacesim import input_data
 # Simulator
 from hyperspacesim import output_data
 from hyperspacesim.scene import simulator_scene as sc
+from hyperspacesim.scene import frame_transforms as frames
 
 
 class RendererControl:
@@ -36,6 +37,12 @@ if __name__ == "__main__":
     user_inputs = input_data.Configs()
     user_inputs.load_configs(case_directory)
 
+    # Process orbit inputs
+    kernel_path = "kernels/meta_kernel.tm" # TODO: Create access to internal kernel data
+    orbit_data = frames.MissionInputProcessor(
+        user_inputs.mission_config, kernel_path
+    )
+
     # Initialise Mitsuba
     mi.set_variant(user_inputs.case_config["mitsuba_variant"])
 
@@ -44,7 +51,7 @@ if __name__ == "__main__":
     # ------------------------------- #
 
     # Construct parts of the scene
-    scene = sc.SceneBuilder(user_inputs)
+    scene = sc.SceneBuilder(user_inputs, orbit_data)
     scene.build_integrator()
     scene.build_sampler()
     scene.build_sun()
