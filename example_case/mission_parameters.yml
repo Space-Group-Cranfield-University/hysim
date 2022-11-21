@@ -7,21 +7,22 @@
 file_type: mission_config
 
 # ------------------------------------------------------------------------
-# Target
+
+datetime: "10/26/2017 11:30:00 utc"
+
 target:
-  # Specify reference frame used for orbit definition
-  orbit_frame: simple 
-  position: [0, 0, 0]
+  # Specify reference frame used for orbit definition.
+  position_frame: kep
   
-  # Specify reference frame used for attitude
-  attitude_frame: simple 
+  # Define position in reference frame
+  # position: [7000, 0, 0.436, 5.236, 1.396, 3.14195] # [a, e, i, raan, argp, nu]
+  # position: [7000, 0, 0.436, 5.236, 1.396, 3.14200]
+  position: [7000, 0, 0.436, 5.236, 1.396, 3.14205]
+  # Attitude frame
   attitude: [-30, 0, 0]
 
 chaser:
-  orbit_frame: simple 
-  position: [0, 0, 0]
-  
-  # Specify reference frame used for attitude
-  attitude_frame: simple 
-  attitude: [0, 0, 0]
+  position_frame: kep 
+  position: [7000.3, 0, 0.436, 5.236, 1.396, 3.142]
+  attitude: lookat
 

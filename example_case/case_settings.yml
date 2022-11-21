@@ -28,4 +28,6 @@ log:
 # Output Settings
 output:
   - format: exr
-    file_name: hdr_case_results.exr
+    # file_name: case_results_1.exr
+    # file_name: case_results_2.exr
+    file_name: case_results_3.exr
