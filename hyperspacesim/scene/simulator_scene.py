@@ -12,8 +12,9 @@ from hyperspacesim.scene import target_satellite as targ
 
 
 class SceneBuilder:
-    def __init__(self, user_inputs) -> None:
+    def __init__(self, user_inputs, orbit_data) -> None:
         self.user_inputs = user_inputs
+        self.orbit_data = orbit_data
         self.integrator = None
         self.sampler = None
         self.sun = None
@@ -74,12 +75,10 @@ class SceneBuilder:
 
         # --- Chaser Satellite --- #
         self.chaser = chas.Chaser(sensor)
-        self.chaser.set_simple_position(
-            self.user_inputs.mission_config["chaser"]["position"]
-        )
-        self.chaser.set_simple_attitude(
-            self.user_inputs.mission_config["chaser"]["position"]
-        )
+        self.chaser.position = self.orbit_data.chaser_position
+        self.chaser.attitude = self.user_inputs.mission_config["chaser"][
+            "attitude"
+        ]
 
         self.chaser.build_dict()
 
@@ -110,11 +109,9 @@ class SceneBuilder:
 
             self.target.add_part(part)
 
+        self.target.position = self.orbit_data.target_position
         self.target.attitude = self.user_inputs.mission_config["target"][
             "attitude"
-        ]
-        self.target.position = self.user_inputs.mission_config["target"][
-            "position"
         ]
 
         self.target.build_dict()

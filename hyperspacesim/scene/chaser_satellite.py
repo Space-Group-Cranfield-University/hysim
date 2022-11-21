@@ -97,17 +97,9 @@ class Chaser:
     def __init__(self, sensor):
         self.sensor = sensor
         self.position = []
-        self.attitude = None
+        self.attitude = []
         self.__transform_type = None
         self.chaser_dict = {}
-
-    def set_simple_position(self, position_input):
-        """Set the position of the chaser in simple cartesian coordinates"""
-        self.position = position_input
-
-    def set_simple_attitude(self, attitude_input):
-        """Set the attitude of the sensor in degrees around each axis"""
-        self.attitude = attitude_input
 
     def set_lookat_attitude(self):
         self.attitude = "lookat"
