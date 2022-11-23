@@ -38,7 +38,7 @@ if __name__ == "__main__":
     user_inputs.load_configs(case_directory)
 
     # Process orbit inputs
-    kernel_path = "kernels/meta_kernel.tm" # TODO: Create access to internal kernel data
+    kernel_path = "kernels/meta_kernel.tm"  # TODO: Create access to internal kernel data
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_path
     )
