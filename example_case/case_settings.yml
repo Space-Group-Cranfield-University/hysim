@@ -8,7 +8,7 @@ file_type: case_config
 
 # ------------------------------------------------------------------------
 # Render Settings
-mitsuba_variant: scalar_spectral
+mitsuba_variant: cuda_spectral_double
 
 sampler:
   type: stratified
