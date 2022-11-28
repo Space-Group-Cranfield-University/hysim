@@ -94,7 +94,7 @@ class MissionInputProcessor:
         self.location_formats = {
             "state_vectors": self.load_state_vectors,
             "kep": convert_kepler_to_state_vectors,
-            "tle": convert_tle_to_state_vectors,
+            "tle": convert_tle_to_state_vectors
         }
 
         # Calculated state vectors
