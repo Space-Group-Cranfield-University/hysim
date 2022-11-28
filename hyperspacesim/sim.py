@@ -37,7 +37,10 @@ if __name__ == "__main__":
     user_inputs = input_data.Configs()
     user_inputs.load_configs(case_directory)
 
+    # print(len(user_inputs.mission_config["target"]["position"][0]))
+    # print(len(user_inputs.mission_config["chaser"]["position"][1]))
     # Process orbit inputs
+
     kernel_path = "kernels/meta_kernel.tm"  # TODO: Create access to internal kernel data
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_path
