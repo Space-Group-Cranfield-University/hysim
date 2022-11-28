@@ -22,7 +22,7 @@ camera:
   # focus distance to be specified.
   field_of_view: 3.69 # degrees
   aperture_radius: 0.2 # meters
-  focus_distance: 250 # meters
+  focus_distance: 1000000 # meters
 
 # ------------------------------------------------------------------------
 # Film Parameters
