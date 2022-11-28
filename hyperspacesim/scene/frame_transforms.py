@@ -45,7 +45,7 @@ def convert_kepler_to_state_vectors(elements, epoch):
 
 
 def convert_tle_to_state_vectors(tle_data, epoch):
-    [_, tle_elements] = spice.getelm(1957, len([0]), tle_data)
+    [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_data)
     geoph_data_list = ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
     geophs = [
         float(spice.bodvrd("EARTH", geoph_data, 1)[1])
