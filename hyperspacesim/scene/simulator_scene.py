@@ -31,8 +31,6 @@ class SceneBuilder:
         self.sampler = {"sampler": self.user_inputs.case_config["sampler"]}
 
     def build_sun(self):
-        sun_direction = [0.2, 0.8, 0.0]  # TODO: User chosen position
-
         # --- Sun --- #
         irradiance_data = spd_reader.SPDReader(
             data_handling.get_wehrli85_path()
@@ -43,7 +41,9 @@ class SceneBuilder:
         )
 
         self.sun = env.Sun(sunlight_spectrum)
-        self.sun.position_sun_in_simple_3d(sun_direction)
+        self.sun.position_sun_in_simple_3d(
+            self.orbit_data.sun_direction_vector
+        )
 
         # Build dict from data:
         self.sun.build_dict()

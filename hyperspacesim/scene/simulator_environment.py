@@ -1,15 +1,12 @@
 """Space environment parameters"""
-from dataclasses import dataclass
 
 
-@dataclass
 class Sun:
     """Sun object in scene environment"""
-    sun_dict: dict = None
-
-    def __init__(self, irradiance_spectrum):
-        self.irradiance_spectrum = irradiance_spectrum
+    def __init__(self, irradiance_spectrum) -> None:
+        self.sun_dict = None
         self.sun_position = None
+        self.irradiance_spectrum = irradiance_spectrum
 
     def position_sun_in_simple_3d(self, direction):
         """Position sun using simple cartesian direction vector"""
