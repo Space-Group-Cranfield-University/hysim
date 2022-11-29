@@ -33,7 +33,7 @@ class Camera(ABC):
     """Abstract class to based"""
 
     near_clip: float = 0.01
-    far_clip: float = 1e8
+    far_clip: float = 1e20
 
     @abstractmethod
     def build_dict(self):
