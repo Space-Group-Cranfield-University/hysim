@@ -20,17 +20,17 @@ spectrum_file: example_case/sensors/film.spd
 camera:
   # Camera type ThinLense requires field of view, aperture radius and
   # focus distance to be specified.
-  field_of_view: 3.69 # degrees
+  field_of_view: 0.1 # degrees
   aperture_radius: 0.2 # meters
-  focus_distance: 1000000 # meters
+  focus_distance: 84535 # meters
 
 # ------------------------------------------------------------------------
 # Film Parameters
 # ------------------------------------------------------------------------
 # Define film properties: Assumed a hyperspectral film
 film:
-  width: 1920
-  height: 1080
+  width: 1024
+  height: 1024
 
 # Optional inputs to control the rendered bands. If not output the
 # default number in the spectrum file are used.

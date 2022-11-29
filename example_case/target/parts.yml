@@ -16,16 +16,25 @@ file_type: parts_config
 
 # List of components that make up the target:
 components:
+
+  antenna_rod:
+    file: example_case/target/mesh/paz_antenna_rod.ply
+    database_material: gold_mli
+
+  antenna:
+    file: example_case/target/mesh/paz_antenna.ply
+    user_material: diffuse_aluminium
+
   bus:
-    file: example_case/target/mesh/bus.ply
-    database_material: gold_mli 
+    file: example_case/target/mesh/paz_body.ply
+    database_material: gold_mli
 
   solar_panel:
-    file: example_case/target/mesh/solar_panel.ply
+    file: example_case/target/mesh/paz_solar_panel.ply
     database_material: solar_panel_glass
 
   sar_array:
-    file: example_case/target/mesh/sar.ply
+    file: example_case/target/mesh/paz_sar_array.ply
     user_material: diffuse_aluminium
 
   
