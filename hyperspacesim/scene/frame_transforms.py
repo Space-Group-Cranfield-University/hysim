@@ -44,14 +44,16 @@ def convert_kepler_to_state_vectors(elements, epoch):
     )
 
 
-def tle_formatting(tle_data):
-    tle_data[0] = tle_data[0]+"\0\x00"
+def check_for_null(tle_data):
+    """Adds a null to first line if there isnt one"""
+    if tle_data[0][-1] != "\x00":
+        tle_data[0] += "\x00"
     return tle_data
 
 
 def convert_tle_to_state_vectors(tle_data, epoch):
-    tle_formatted = tle_formatting(tle_data)
-    [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_formatted)
+    tle_data = check_for_null(tle_data)
+    [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_data)
     geoph_data_list = ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
     geophs = [
         float(spice.bodvrd("EARTH", geoph_data, 1)[1])
@@ -100,7 +102,7 @@ class MissionInputProcessor:
         self.location_formats = {
             "state_vectors": self.load_state_vectors,
             "kep": convert_kepler_to_state_vectors,
-            "tle": convert_tle_to_state_vectors
+            "tle": convert_tle_to_state_vectors,
         }
 
         # Calculated state vectors
