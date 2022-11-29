@@ -41,7 +41,9 @@ if __name__ == "__main__":
     # print(len(user_inputs.mission_config["chaser"]["position"][1]))
     # Process orbit inputs
 
-    kernel_path = "kernels/meta_kernel.tm"  # TODO: Create access to internal kernel data
+    kernel_path = (
+        "kernels/meta_kernel.tm"  # TODO: Create access to internal kernel data
+    )
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_path
     )
@@ -63,6 +65,32 @@ if __name__ == "__main__":
 
     # Build scene dict
     scene.build_scene_dict()
+
+    #####################################
+    # DEBUGGING
+
+    # scene.scene_dict["sun_emitter"] = {
+    #     "type": "constant",
+    #     "radiance": {
+    #         "type": "rgb",
+    #         "value": 1.0,
+    #     },
+    # }
+
+    def calculate_relative_distance(p1, p2):
+        return (
+            (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
+        ) ** (0.5)
+
+    print(orbit_data.chaser_state_vectors)
+    print(orbit_data.target_state_vectors)
+
+    print(scene.chaser.position)
+    print(scene.target.position)
+    relative_distance = calculate_relative_distance(
+        scene.chaser.position, scene.target.position
+    )
+    print(f"Relative Distance: {relative_distance}")
 
     #####################################
     # Load to mitsuba and run
