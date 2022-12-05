@@ -91,13 +91,9 @@ def convert_eci_to_lvlh(state_vectors, transform, origin):
 
 class MissionInputProcessor:
     """Handles mission inputs and converts to local coordinate system"""
-
-    def __init__(self, mission_config, kernel_path):
+    def __init__(self, mission_config, kernel_paths):
         # Initialise Kernels
-        print(kernel_path)
-        # kernel_path = "W:\\Work\\DASA_Hyperspectral_Simulator\\Code_Development\\hyperspacesim\\hyperspacesim\\data\\kernels\\meta_kernel.tm"
-        spice.furnsh(kernel_path)
-
+        spice.furnsh(kernel_paths)
         # Load configs
         self.mission_config = mission_config
         self.epoch = spice.str2et(mission_config["datetime"])
