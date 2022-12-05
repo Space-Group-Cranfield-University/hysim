@@ -2,7 +2,7 @@
 
 # Data handling
 from hyperspacesim.data import spd_reader
-from hyperspacesim.data import data_handling
+from hyperspacesim.data import data_handling as dh
 
 # Scene
 from hyperspacesim.scene import spectra
@@ -18,6 +18,7 @@ class SceneBuilder:
         self.integrator = None
         self.sampler = None
         self.sun = None
+        self.earth = None
         self.target = None
         self.chaser = None
         self.scene_dict = {"type": "scene"}
@@ -30,11 +31,32 @@ class SceneBuilder:
     def build_sampler(self):
         self.sampler = {"sampler": self.user_inputs.case_config["sampler"]}
 
+    def build_earth(self):
+        earth_data_path = dh.EarthData.PATH.value
+        print(type(dh.EarthData.MESH.value))
+        self.earth = env.Earth()
+        self.earth.mesh_path = dh.get_data_path(
+            earth_data_path, dh.EarthData.MESH.value
+        )
+        self.earth.soil_spectrum_path = dh.get_data_path(
+            earth_data_path, dh.EarthData.SOIL_SPECTRUM.value
+        )
+        self.earth.ocean_spectrum_path = dh.get_data_path(
+            earth_data_path, dh.EarthData.OCEAN_SPECTRUM.value
+        )
+        self.earth.earth_image_path = dh.get_data_path(
+            earth_data_path, dh.EarthData.SURFACE_BITMAP.value
+        )
+        self.earth.position = self.orbit_data.earth_position
+        self.earth.build_dict()
+
     def build_sun(self):
         # --- Sun --- #
-        irradiance_data = spd_reader.SPDReader(
-            data_handling.get_wehrli85_path()
+        sunlight_data_path = dh.get_data_path(
+            dh.LightSourceData.PATH.value,
+            dh.LightSourceData.SUNLIGHT_SPECTRUM.value,
         )
+        irradiance_data = spd_reader.SPDReader(sunlight_data_path)
 
         sunlight_spectrum = spectra.IrradianceSpectrum(
             irradiance_data.wavelengths, irradiance_data.values
@@ -121,3 +143,4 @@ class SceneBuilder:
         self.scene_dict.update(self.target.target_dict)
         self.scene_dict.update(self.chaser.chaser_dict)
         self.scene_dict.update(self.sun.sun_dict)
+        self.scene_dict.update(self.earth.earth_dict)

@@ -94,6 +94,8 @@ class MissionInputProcessor:
 
     def __init__(self, mission_config, kernel_path):
         # Initialise Kernels
+        print(kernel_path)
+        # kernel_path = "W:\\Work\\DASA_Hyperspectral_Simulator\\Code_Development\\hyperspacesim\\hyperspacesim\\data\\kernels\\meta_kernel.tm"
         spice.furnsh(kernel_path)
 
         # Load configs
@@ -113,7 +115,6 @@ class MissionInputProcessor:
 
         # Load inputs and calculate state vectors
         self.convert_inputs_to_state_vectors()
-
         self.local_frame_transform = compute_eci_to_lvlh_rotation_matrix(
             self.target_state_vectors
         )

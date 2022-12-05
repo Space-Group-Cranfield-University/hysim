@@ -1,11 +1,17 @@
 """
 Main client script to run code. Called by user.
 """
+# Debugging
+import pretty_errors
+
 # Packages
 import mitsuba as mi
 
 # I/O
 from hyperspacesim import input_data
+
+# Package data
+from hyperspacesim.data import data_handling as dh
 
 # Simulator
 from hyperspacesim import output_data
@@ -27,25 +33,25 @@ class RendererControl:
         self.render = mi.render(self.mitsuba_scene)
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+def run_sim(run_directory):
 
     # ------------------------------- #
     # Get user Inputs
     # ------------------------------- #
-    case_directory = "example_case/"
+    # run_directory = "example_case/"
 
     user_inputs = input_data.Configs()
-    user_inputs.load_configs(case_directory)
+    user_inputs.load_configs(run_directory)
 
-    # print(len(user_inputs.mission_config["target"]["position"][0]))
-    # print(len(user_inputs.mission_config["chaser"]["position"][1]))
-    # Process orbit inputs
-
-    kernel_path = (
-        "kernels/meta_kernel.tm"  # TODO: Create access to internal kernel data
+    kernel_data = dh.Kernels
+    meta_kernel_path = dh.get_data_path(
+        kernel_data.PATH.value,
+        kernel_data.META_KERNEL.value,
     )
+    print(meta_kernel_path)
     orbit_data = frames.MissionInputProcessor(
-        user_inputs.mission_config, kernel_path
+        user_inputs.mission_config, meta_kernel_path
     )
 
     # Initialise Mitsuba
@@ -62,6 +68,7 @@ if __name__ == "__main__":
     scene.build_sun()
     scene.build_chaser()
     scene.build_target()
+    scene.build_earth()
 
     # Build scene dict
     scene.build_scene_dict()
@@ -97,6 +104,8 @@ if __name__ == "__main__":
     #####################################
 
     sim = RendererControl()
+    print(scene.earth.earth_dict["earth"])
+    sim.load_scene(scene.earth.earth_dict["earth"])
     sim.load_scene(scene.scene_dict)
     sim.run()
 
@@ -104,6 +113,6 @@ if __name__ == "__main__":
     # Export Outputs
     #####################################
     output = output_data.OutputHandler(
-        sim.render, scene.chaser.sensor.film, case_directory
+        sim.render, scene.chaser.sensor.film, run_directory
     )
     output.produce_output_data(user_inputs)
