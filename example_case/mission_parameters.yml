@@ -12,24 +12,6 @@ datetime: "08/19/2022 21:07:59 utc"
 
 # =================================================================================== #
 
-
-# target:
-#   # Specify reference frame used for orbit definition.
-#   position_frame: kep
-#   # Define position in reference frame
-#   position: [7000, 0, 0.436, 5.236, 1.396, 3.14195] # [a, e, i, raan, argp, nu]
-#   # Attitude frame
-#   attitude: [-30, 0, 0]
-
-# chaser:
-#   position_frame: kep
-#   position: [7084.5, 0, 0.436, 5.236, 1.396, 3.142]
-#   attitude: lookat
-
-
-
-# =================================================================================== #
-
 target:
   # Specify reference frame used for orbit definition.
   position_frame: tle
