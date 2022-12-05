@@ -41,12 +41,6 @@ class Target:
         self.attitude = []
         self.target_dict = None
 
-    def set_position(self, position):
-        pass
-
-    def set_attitude(self, attitude):
-        pass
-
     def add_part(self, part):
         self.target_model.append(part)
 
@@ -68,4 +62,3 @@ class Target:
         for part in self.target_model:
             self.target_dict.update({part.name: part.part_dict})
             self.target_dict[part.name]["to_world"] = self.__transform()
-
