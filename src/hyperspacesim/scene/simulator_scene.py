@@ -33,7 +33,6 @@ class SceneBuilder:
 
     def build_earth(self):
         earth_data_path = dh.EarthData.PATH.value
-        print(type(dh.EarthData.MESH.value))
         self.earth = env.Earth()
         self.earth.mesh_path = dh.get_data_path(
             earth_data_path, dh.EarthData.MESH.value
@@ -72,8 +71,12 @@ class SceneBuilder:
 
     def build_chaser(self):
         # --- Sensor --- #
+        # TODO: Add option to choose between internal sensor data, user
+        # data in spd file and selected bands
+
         # Get the spectrum file path
-        spectrum_path = self.user_inputs.sensor_config["spectrum_file"]
+        spectrum_file = self.user_inputs.sensor_config["spectrum_file"]
+        spectrum_path = dh.get_user_data_path(spectrum_file)
         spectrum_data = spd_reader.SPDReader(spectrum_path)
 
         # Build the spectral bands
@@ -115,7 +118,7 @@ class SceneBuilder:
             part = targ.PartBuilder(part_name)
 
             # Assign part mesh:
-            part.mesh_file = part_input["file"]
+            part.mesh_file = dh.get_user_data_path(part_input["file"])
 
             # Assign material:
             if "user_material" in part_input:
