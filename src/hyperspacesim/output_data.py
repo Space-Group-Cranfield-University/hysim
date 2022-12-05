@@ -53,6 +53,6 @@ class OutputFormatter:
         exrHeader["emissiveUnits"] = "W.m^-2.sr^-1"
 
         exrImage = OpenEXR.OutputFile(
-            (case_directory + output_file_name), exrHeader
+            (output_file_name), exrHeader
         )
         exrImage.writePixels(channels_data)
