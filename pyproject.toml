@@ -1,0 +1,27 @@
+[project]
+# Project Information
+name = "hyperspacesim" # Required
+version = "0.1.0"
+description = "Hyperspectral Space-to-Space Imaging Simulator"
+requires-python = ">3.8"
+# readme = "README.md"
+# licence = {file = "LICENCE.txt"}
+
+# classifiers=[
+#     "Development Status :: Pre-Alpha",
+#     "Licence :: TBC",
+# ],
+# authors = [
+#   {name = "A. Random Developer", email = "author@example.com" } # Optional
+# ]
+# maintainers = [
+#   {name = "A. Great Maintainer", email = "maintainer@example.com" } # Optional
+# ]
+
+[project.scripts]  # Optional
+hysim = "hyperspacesim.cli.entry:main"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

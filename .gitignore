@@ -1,2 +1,12 @@
 # pycache
 __pycache__
+
+# Build files
+build
+hyperspacesim.egg-info
+
+# Dev envs
+envs
+
+# Additional tests and data
+install_test
