@@ -44,14 +44,14 @@ def run_sim(run_directory):
     user_inputs = input_data.Configs()
     user_inputs.load_configs(run_directory)
 
-    kernel_data = dh.Kernels
-    meta_kernel_path = dh.get_data_path(
-        kernel_data.PATH.value,
-        kernel_data.META_KERNEL.value,
-    )
-    print(meta_kernel_path)
+    # kernel_data = dh.Kernels
+    # meta_kernel_path = dh.get_data_path(
+    #     kernel_data.PATH.value,
+    #     kernel_data.META_KERNEL.value,
+    # )
+    kernel_paths = dh.get_kernel_paths()
     orbit_data = frames.MissionInputProcessor(
-        user_inputs.mission_config, meta_kernel_path
+        user_inputs.mission_config, kernel_paths
     )
 
     # Initialise Mitsuba
@@ -89,11 +89,11 @@ def run_sim(run_directory):
             (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
         ) ** (0.5)
 
-    print(orbit_data.chaser_state_vectors)
-    print(orbit_data.target_state_vectors)
+    # print(orbit_data.chaser_state_vectors)
+    # print(orbit_data.target_state_vectors)
 
-    print(scene.chaser.position)
-    print(scene.target.position)
+    # print(scene.chaser.position)
+    # print(scene.target.position)
     relative_distance = calculate_relative_distance(
         scene.chaser.position, scene.target.position
     )
@@ -104,8 +104,6 @@ def run_sim(run_directory):
     #####################################
 
     sim = RendererControl()
-    print(scene.earth.earth_dict["earth"])
-    sim.load_scene(scene.earth.earth_dict["earth"])
     sim.load_scene(scene.scene_dict)
     sim.run()
 
