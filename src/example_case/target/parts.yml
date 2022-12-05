@@ -1,0 +1,40 @@
+---
+# ========================================================================
+# Parts Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: parts_config
+
+# List of parts and their respective materials. Each part follows the 
+# following format:
+
+# name: name of the part
+# file: the mesh file for the part
+# database_material: chooses a material from the database (cannot be used with user_material)
+# user_material: specifies a user material file (cannot be used with database_material)
+
+# List of components that make up the target:
+components:
+
+  antenna_rod:
+    file: paz_antenna_rod.ply
+    database_material: gold_mli
+
+  antenna:
+    file: paz_antenna.ply
+    user_material: diffuse_aluminium
+
+  bus:
+    file: paz_body.ply
+    database_material: gold_mli
+
+  solar_panel:
+    file: paz_solar_panel.ply
+    database_material: solar_panel_glass
+
+  sar_array:
+    file: paz_sar_array.ply
+    user_material: diffuse_aluminium
+
+  

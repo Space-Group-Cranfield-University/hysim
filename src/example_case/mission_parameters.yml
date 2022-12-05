@@ -1,0 +1,29 @@
+---
+# ========================================================================
+# Mission Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: mission_config
+
+# ------------------------------------------------------------------------
+
+datetime: "08/19/2022 21:07:59 utc"
+
+# =================================================================================== #
+
+target:
+  # Specify reference frame used for orbit definition.
+  position_frame: tle
+  # Define position in reference frame
+  position: ["1 31698U 07026A   22231.61861684  .00000322  00000-0  18542-4 0  9993",
+             "2 31698  97.4459 238.3233 0001614  90.5035  18.2186 15.19148756841708"]  
+  # Attitude frame
+  attitude: [-30, 0, 0]
+
+chaser:
+  position_frame: tle
+  position: ["1 47933U 21022B   22231.59772040  .00000413  00000-0  44540-4 0  9996", 
+             "2 47933  97.6877 130.4910 0018971 330.4982  29.5198 14.93458057 76895"]
+  attitude: lookat
+

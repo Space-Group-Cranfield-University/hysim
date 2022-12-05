@@ -1,0 +1,34 @@
+---
+# ========================================================================
+# Case Settings Configuration File
+# ========================================================================
+# File type: specifies the type of configuration file to be interpreted by
+# the program.
+file_type: case_config
+
+# ------------------------------------------------------------------------
+# Render Settings
+# mitsuba_variant: scalar_spectral
+mitsuba_variant: scalar_spectral
+
+sampler:
+  type: stratified
+  sample_count: 4 # Should be square number (256 is default)
+
+integrator:
+  type: path
+  max_depth: 1 # -1 for infinite
+
+# ------------------------------------------------------------------------
+# Log Settings
+log: 
+  save_case_log: True
+  file_name: case_log
+
+# ------------------------------------------------------------------------
+# Output Settings
+output:
+  - format: exr
+    # file_name: case_results_1.exr
+    # file_name: case_results_2.exr
+    file_name: case_results_3.exr
