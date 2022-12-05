@@ -6,7 +6,7 @@ build
 hyperspacesim.egg-info
 
 # Dev envs
-envs
+# envs
 
 # Additional tests and data
 install_test
