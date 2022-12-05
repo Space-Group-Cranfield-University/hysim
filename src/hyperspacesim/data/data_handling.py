@@ -4,16 +4,31 @@ Functions to handle data aquisition in the package.
 Adding data to the package can be done by making additions to the 
 data_list.json.
 """
-import json
+import os
 from importlib import resources
 from enum import Enum
+from pathlib import Path
+
+import json
+
+
+# ===== IO Error Handling ===== #
+
+
+class DataFileNotFoundError(Exception):
+    pass
+
+
+class ConfigFileMissing(Exception):
+    pass
+
 
 # ===== DATABASE ===== #
 
 
 class Kernels(Enum):
     PATH = "hyperspacesim.data.kernels"
-    META_KERNEL = "meta_kernel.tm"
+    KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls"]
 
 
 class MaterialsData(Enum):
@@ -37,6 +52,24 @@ class EarthData(Enum):
     OCEAN_SPECTRUM = "ocean.spd"
     MESH = "earth.ply"
     SURFACE_BITMAP = "earth.jpg"
+
+
+def get_user_data_path(filename):
+    for root, _, files in os.walk(Path.cwd()):
+        for file in files:
+            if file == filename:
+                return os.path.join(root, file).replace("\\", "/")
+
+    # raise DataFileNotFoundError(
+    #     f"{filename} cannot be found in the case directory"
+    # )
+
+
+def get_kernel_paths():
+    return [
+        get_data_path(Kernels.PATH.value, kernel)
+        for kernel in Kernels.KERNEL_LIST.value
+    ]
 
 
 def read_json_package_data(path, file):
@@ -65,19 +98,18 @@ def get_data_path(directory, file):
 
 
 def get_sunlight_spectrum():
-    print(LightSourceData.PATH.value)
     return get_data_path(
         LightSourceData.PATH.value, LightSourceData.SUNLIGHT_SPECTRUM.value
     )
 
 
 def list_defined_materials():
-    pass
+    raise NotImplementedError()
 
 
 def list_defined_sensors():
-    pass
+    raise NotImplementedError()
 
 
 def list_defined_light_sources():
-    pass
+    raise NotImplementedError()
