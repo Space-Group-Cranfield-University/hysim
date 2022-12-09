@@ -1,4 +1,11 @@
-"""Scene"""
+"""Simulator Scene Module
+
+Contains Builder class to construct scene dictionary from simulator case
+"""
+
+# Inputs
+from hyperspacesim import input_data as in_data
+from hyperspacesim.scene import frame_transforms as frames
 
 # Data handling
 from hyperspacesim.data import spd_reader
@@ -12,7 +19,64 @@ from hyperspacesim.scene import target_satellite as targ
 
 
 class SceneBuilder:
-    def __init__(self, user_inputs, orbit_data) -> None:
+    """Builder class that constructs objects in scene and adds
+    them to a single dictionary
+
+    Attributes
+    ----------
+    user_inputs : in_data.Configs
+        Object containing user input data
+    orbit_data : frames.MissionInputProcessor
+        Orbit data converted from user inputs
+    integrator : dict
+        Dictionary configuring mitsuba integrator
+    sampler : dict
+        Dictionary configuring sampler
+    sun : dict
+        Dictionary defining Sun object in scene
+    earth : dict
+        Dictionary defining Earth in the scene
+    target : dict
+        Dictionary defining Target spacecraft
+    chaser : dict
+        Dictionary defining chaser spacecraft and sensor
+    scene_dict : dict
+        Dictionary defining entire scene after construction. This is
+        passed to Mitsuba for rendering.
+
+    Methods
+    -------
+    build_integrator
+        Builds the integrator dictionary
+    build_sampler
+        Builds the sampler dictionary
+    build_earth
+        Builds the Earth dictionary
+    build_sun
+        Builds the Sun dictionary
+    build_target
+        Builds the Target dictionary
+    build_chaser
+        Builds the Chaser dictionary
+    build_scene_dict
+        Builds the Scene dictionary
+    """
+
+    def __init__(
+        self,
+        user_inputs: in_data.Configs,
+        orbit_data: frames.MissionInputProcessor,
+    ):
+        """Initializer
+
+        Parameters
+        ----------
+        user_inputs : in_data.Configs
+            Object containing user input datat
+        orbit_data : frames.MissionInputProcessor
+            Orbit data converted from user inputs
+        """
+
         self.user_inputs = user_inputs
         self.orbit_data = orbit_data
         self.integrator = None
@@ -24,14 +88,17 @@ class SceneBuilder:
         self.scene_dict = {"type": "scene"}
 
     def build_integrator(self):
+        """Builds integrator dictionary"""
         self.integrator = {
             "integrator": self.user_inputs.case_config["integrator"]
         }
 
     def build_sampler(self):
+        """Builds sampler dictionary"""
         self.sampler = {"sampler": self.user_inputs.case_config["sampler"]}
 
     def build_earth(self):
+        """Builds Earth object dictionary"""
         earth_data_path = dh.EarthData.PATH.value
         self.earth = env.Earth()
         self.earth.mesh_path = dh.get_data_path(
@@ -50,6 +117,7 @@ class SceneBuilder:
         self.earth.build_dict()
 
     def build_sun(self):
+        """Builds Sun object dictionary"""
         # --- Sun --- #
         sunlight_data_path = dh.get_data_path(
             dh.LightSourceData.PATH.value,
@@ -70,6 +138,7 @@ class SceneBuilder:
         self.sun.build_dict()
 
     def build_chaser(self):
+        """Builds Chaser spacecraft dictionary containing sensor parameters"""
         # --- Sensor --- #
         # TODO: Add option to choose between internal sensor data, user
         # data in spd file and selected bands
@@ -108,8 +177,7 @@ class SceneBuilder:
         self.chaser.build_dict()
 
     def build_target(self):
-        """Assembles target parts and assigns materials to each part according
-        to configs"""
+        """Builds Target spacecraft dictionary describing object model"""
         self.target = targ.Target()
         for part_name in self.user_inputs.parts_config["components"]:
             part_input = self.user_inputs.parts_config["components"][part_name]
@@ -142,6 +210,7 @@ class SceneBuilder:
         self.target.build_dict()
 
     def build_scene_dict(self):
+        """Builds scene dictionary by adding scene components to scene dict"""
         self.scene_dict.update(self.integrator)
         self.scene_dict.update(self.target.target_dict)
         self.scene_dict.update(self.chaser.chaser_dict)
