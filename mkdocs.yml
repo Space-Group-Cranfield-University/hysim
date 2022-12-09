@@ -1,0 +1,19 @@
+site_name: HySim
+nav:
+  - About: 'about.md'
+  - Installation: 'installation.md'
+  - 'User Guide':
+    - 'Configuring a case': 'user_guide/configuring.md'
+    - 'Preparing a target mesh': 'user_guide/mesh_prep.md'
+    - 'Running a case': 'user_guide/running.md'
+    - 'Advanced use cases': 'user_guide/advanced.md'
+  - 'Example Cases':
+    - 'TerraSAR Flyby': 'example_cases/terrasar_case.md'
+    - 'ISS Flyby': 'example_cases/iss_case.md'
+  - API: 'api.md'
+theme:
+    name: mkdocs
+    highlightjs: true
+    hljs_languages:
+        - yaml
+        - python
