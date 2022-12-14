@@ -1,27 +1,42 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel"]
+# build-backend = "setuptools.build_meta"
+
+
 [project]
 # Project Information
 name = "hyperspacesim" # Required
 version = "0.1.0"
 description = "Hyperspectral Space-to-Space Imaging Simulator"
-requires-python = ">3.8"
-# readme = "README.md"
+requires-python = ">=3.8"
+readme = "README.md"
 # licence = {file = "LICENCE.txt"}
 
-# classifiers=[
-#     "Development Status :: Pre-Alpha",
-#     "Licence :: TBC",
-# ],
-# authors = [
-#   {name = "A. Random Developer", email = "author@example.com" } # Optional
-# ]
-# maintainers = [
-#   {name = "A. Great Maintainer", email = "maintainer@example.com" } # Optional
-# ]
+classifiers=[
+     "Development Status :: Pre-Alpha",
+     # "Licence :: TBC",
+]
+dependencies = [
+     "numpy>=1.23.5",
+     "mitsuba>=3.1.0",
+     "PyYAML>=6.0",
+     "spiceypy>=5.1.2",
+     "Imath>=0.0.2"
+
+]
+# dynamic = ["dependencies"]
+
 
 [project.scripts]  # Optional
 hysim = "hyperspacesim.cli.entry:main"
 
-
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.distutils.bdist_wheel]
+universal = true
+
+# [tool.setuptools.dynamic]
+# dependencies = {file = ["requirements.txt"]}
