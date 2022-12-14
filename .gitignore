@@ -3,7 +3,7 @@ __pycache__
 
 # Build files
 build
-hyperspacesim.egg-info
+hysim.egg-info
 temp
 *whl
 

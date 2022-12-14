@@ -25,31 +25,31 @@ class ConfigFileMissing(Exception):
 # ===== DATABASE ===== #
 class Kernels(Enum):
     """Enum containing path and files for SpiceyPy kernels"""
-    PATH = "hyperspacesim.data.kernels"
+    PATH = "hysim.data.kernels"
     KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls"]
 
 
 class MaterialsData(Enum):
     """Enum with path and file name of materials database"""
-    PATH = "hyperspacesim.data.materials"
+    PATH = "hysim.data.materials"
     MATERIALS_FILE = "materials.json"
 
 
 class SensorsData(Enum):
     """Enum with path and file name of sensors database"""
-    PATH = "hyperspacesim.data.sensors"
+    PATH = "hysim.data.sensors"
     SENSORS_FILE = "sensors.json"
 
 
 class LightSourceData(Enum):
     """Enum with path and file names of light sources"""
-    PATH = "hyperspacesim.data.light_sources"
+    PATH = "hysim.data.light_sources"
     SUNLIGHT_SPECTRUM = "wehrli85.spd"
 
 
 class EarthData(Enum):
     """Enum of path and file names of Earth data"""
-    PATH = "hyperspacesim.data.earth_model"
+    PATH = "hysim.data.earth_model"
     SOIL_SPECTRUM = "soil.spd"
     OCEAN_SPECTRUM = "ocean.spd"
     MESH = "earth.ply"

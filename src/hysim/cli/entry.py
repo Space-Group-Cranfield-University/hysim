@@ -4,7 +4,7 @@ Provides an entry point for package
 """
 
 from pathlib import Path
-from hyperspacesim import sim
+from hysim import sim
 
 
 def main():

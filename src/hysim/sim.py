@@ -10,15 +10,15 @@ handle Mitsuba.
 import mitsuba as mi
 
 # I/O
-from hyperspacesim import input_data
+from hysim import input_data
 
 # Package data
-from hyperspacesim.data import data_handling as dh
+from hysim.data import data_handling as dh
 
 # Simulator
-from hyperspacesim import output_data
-from hyperspacesim.scene import simulator_scene as sc
-from hyperspacesim.scene import frame_transforms as frames
+from hysim import output_data
+from hysim.scene import simulator_scene as sc
+from hysim.scene import frame_transforms as frames
 
 
 class NoSceneLoaded(Exception):

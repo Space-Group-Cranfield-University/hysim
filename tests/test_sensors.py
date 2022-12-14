@@ -1,6 +1,6 @@
 
 import unittest
-from hyperspacesim.scene import sensors as sens
+from hysim.scene import sensors as sens
 
 class TestSpectralBands(unittest.TestCase):
 
