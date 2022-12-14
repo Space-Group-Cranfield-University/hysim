@@ -7,7 +7,7 @@ requires = [
 
 [project]
 # Project Information
-name = "hyperspacesim" # Required
+name = "hysim" # Required
 version = "0.1.0"
 description = "Hyperspectral Space-to-Space Imaging Simulator"
 requires-python = ">=3.8"
@@ -30,7 +30,7 @@ dependencies = [
 
 
 [project.scripts]  # Optional
-hysim = "hyperspacesim.cli.entry:main"
+hysim = "hysim.cli.entry:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

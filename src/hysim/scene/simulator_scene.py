@@ -4,18 +4,18 @@ Contains Builder class to construct scene dictionary from simulator case
 """
 
 # Inputs
-from hyperspacesim import input_data as in_data
-from hyperspacesim.scene import frame_transforms as frames
+from hysim import input_data as in_data
+from hysim.scene import frame_transforms as frames
 
 # Data handling
-from hyperspacesim.data import spd_reader
-from hyperspacesim.data import data_handling as dh
+from hysim.data import spd_reader
+from hysim.data import data_handling as dh
 
 # Scene
-from hyperspacesim.scene import spectra
-from hyperspacesim.scene import simulator_environment as env
-from hyperspacesim.scene import chaser_satellite as chas
-from hyperspacesim.scene import target_satellite as targ
+from hysim.scene import spectra
+from hysim.scene import simulator_environment as env
+from hysim.scene import chaser_satellite as chas
+from hysim.scene import target_satellite as targ
 
 
 class SceneBuilder:

@@ -6,7 +6,7 @@ the hyperspectral sensor.
 import mitsuba as mi
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from hyperspacesim.scene.spectra import FilmSensitivitySpectrum
+from hysim.scene.spectra import FilmSensitivitySpectrum
 
 
 @dataclass

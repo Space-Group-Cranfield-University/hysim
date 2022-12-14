@@ -4,7 +4,7 @@ Module containing classes that manage the Target model in the scene
 """
 import mitsuba as mi
 
-from hyperspacesim.data import data_handling as dh
+from hysim.data import data_handling as dh
 
 
 class PartBuilder:

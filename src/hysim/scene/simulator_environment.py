@@ -6,7 +6,7 @@ directional light source.
 """
 import mitsuba as mi
 
-import hyperspacesim.scene.spectra as spectra
+import hysim.scene.spectra as spectra
 
 
 class Sun:
