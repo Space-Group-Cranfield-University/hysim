@@ -4,9 +4,14 @@ __pycache__
 # Build files
 build
 hyperspacesim.egg-info
+temp
+*whl
 
 # Dev envs
 # envs
 
 # Additional tests and data
 install_test
+
+# Obsidian
+.obsidian
