@@ -54,7 +54,7 @@ class Spectrum(ABC):
         NotImplementedError
             When called
         """
-        raise NotImplementedError("Method not yet implemented")
+        raise NotImplementedError("Feature not yet implemented")
 
     def resize_spectrum(self, spectrum_size: int):
         """Creates polynomial of spectrum and remakes it with a given size
