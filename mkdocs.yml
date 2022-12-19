@@ -1,4 +1,6 @@
 site_name: HySim
+plugins:
+  - mkapi
 nav:
   - About: 'about.md'
   - Installation: 'installation.md'
@@ -10,7 +12,7 @@ nav:
   - 'Example Cases':
     - 'TerraSAR Flyby': 'example_cases/terrasar_case.md'
     - 'ISS Flyby': 'example_cases/iss_case.md'
-  - API: 'api.md'
+  - API: 'mkapi/api/src/hysim'
 theme:
     name: mkdocs
     highlightjs: true
