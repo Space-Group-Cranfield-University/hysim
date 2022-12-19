@@ -3,8 +3,7 @@
 This module contains classes to handle and format output render data from 
 the simulator.
 """
-import OpenEXR
-import Imath
+import mitsuba as mi
 import numpy as np
 
 
@@ -90,35 +89,21 @@ class OutputFormatter:
         output_file_name : str
             Exported file name
         """
-        bmp_array = np.array(self.render_data)
-        exrHeader = OpenEXR.Header(self.film_data.width, self.film_data.height)
+        result_array = np.array(self.render_data)
 
-        channels = {}
-        channels_data = {}
+        channel_names = []
+        for wavelength in self.film_data.spectrum.wavelengths[:-1]:
+            wavelength_string = str(wavelength).replace(".", ",")
+            channel_names.append(f"S0.{wavelength_string}nm")
 
-        for i, wavelength in enumerate(
-            self.film_data.spectrum.wavelengths[:-1]
-        ):
-            channels.update(
-                {
-                    "S0."
-                    + str(wavelength).replace(".", ",")
-                    + "nm": Imath.Channel(Imath.PixelType(OpenEXR.FLOAT))
-                }
+        result_bmp = mi.Bitmap(
+            result_array,
+            pixel_format=mi.Bitmap.PixelFormat.MultiChannel,
+            channel_names=channel_names,
             )
-            channels_data.update(
-                {
-                    "S0."
-                    + str(wavelength).replace(".", ",")
-                    + "nm": bmp_array[:, :, i].tobytes()
-                }
-            )
+        print(result_bmp)
 
-        exrHeader["channels"] = channels
-        exrHeader["spectralLayoutVersion"] = "1.0"
-        exrHeader["emissiveUnits"] = "W.m^-2.sr^-1"
+        result_bmp.metadata()["pixelAspectRatio"] = 1
+        result_bmp.metadata()["screenWindowWidth"] = 1
 
-        exrImage = OpenEXR.OutputFile(
-            (output_file_name), exrHeader
-        )
-        exrImage.writePixels(channels_data)
+        mi.util.write_bitmap(output_file_name, result_bmp)
