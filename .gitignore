@@ -15,3 +15,6 @@ install_test
 
 # Obsidian
 .obsidian
+
+# Local tutorial case results
+*.exr
