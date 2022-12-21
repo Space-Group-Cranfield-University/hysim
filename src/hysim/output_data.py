@@ -101,7 +101,6 @@ class OutputFormatter:
             pixel_format=mi.Bitmap.PixelFormat.MultiChannel,
             channel_names=channel_names,
             )
-        print(result_bmp)
 
         result_bmp.metadata()["pixelAspectRatio"] = 1
         result_bmp.metadata()["screenWindowWidth"] = 1
