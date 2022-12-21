@@ -6,6 +6,9 @@ handle Mitsuba.
 # Debugging
 # import pretty_errors
 
+# Logging
+# import logging
+
 # Packages
 import mitsuba as mi
 
@@ -99,9 +102,6 @@ def run_sim(run_directory):
         Path to the case directory containing configuration
         files and user data.
 
-    Returns
-    -------
-    None
     """
 
     # ------------------------------- #
