@@ -98,9 +98,14 @@ def convert_kepler_to_state_vectors(elements: list, epoch: float) -> list:
         State vectors as list [x, y, z, vx, vy, vz] [m/s]
     """
     perifocal_distance = calculate_perifocal_distance(elements[0], elements[1])
-    mean_anomaly = calculate_mean_anomaly(
-        calculate_eccentric_anomaly(elements[1], elements[5]), elements[1]
-    )
+
+    # TODO: Confirm prefered input, uncomment this code to take in true anomaly
+    # mean_anomaly = calculate_mean_anomaly(
+    #     calculate_eccentric_anomaly(elements[1], elements[5]), elements[1]
+    # )
+
+    # TODO: Confirm prefered input, comment this out to swap to true anomaly
+    mean_anomaly = elements[5]
 
     return spice.conics(
         [
@@ -277,7 +282,7 @@ class MissionInputProcessor:
         self.mission_config = mission_config
         self.epoch = spice.str2et(mission_config["datetime"])
         self.location_formats = {
-            "state_vectors": self.load_state_vectors,
+            "state": self.load_state_vectors,
             "kep": convert_kepler_to_state_vectors,
             "tle": convert_tle_to_state_vectors,
         }
@@ -307,7 +312,7 @@ class MissionInputProcessor:
         )
         return sun_location
 
-    def load_state_vectors(self, location_vector: list, _) -> list:
+    def load_state_vectors(self, location_vector: list, _) -> np.array:
         """Returns location state vector
 
         Parameters
@@ -319,10 +324,10 @@ class MissionInputProcessor:
 
         Returns
         -------
-        list
-            location vector parameter
+        numpy.array
+            location vector
         """
-        return location_vector
+        return np.array(location_vector)
 
     def convert_input(self, scene_object: str) -> list:
         """Converts orbit defined in mission configs file to
@@ -347,6 +352,7 @@ class MissionInputProcessor:
         self.chaser_state_vectors = self.convert_input("chaser")
         self.target_state_vectors = self.convert_input("target")
         self.sun_state_vectors = self.get_sun_location()
+        print(type(self.target_state_vectors))
 
     @property
     def target_position(self) -> list:

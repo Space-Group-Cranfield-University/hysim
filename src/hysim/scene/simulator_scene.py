@@ -2,6 +2,8 @@
 
 Contains Builder class to construct scene dictionary from simulator case
 """
+# Packages
+import numpy as np
 
 # Inputs
 from hysim import input_data as in_data
@@ -203,9 +205,9 @@ class SceneBuilder:
             self.target.add_part(part)
 
         self.target.position = self.orbit_data.target_position
-        self.target.attitude = self.user_inputs.mission_config["target"][
-            "attitude"
-        ]
+        self.target.attitude = np.rad2deg(
+            self.user_inputs.mission_config["target"]["attitude"]
+        )
 
         self.target.build_dict()
 
