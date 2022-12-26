@@ -1,5 +1,7 @@
 site_name: HySim
 
+# =========================================
+# Contents
 nav:
   - Home: index.md
   - Installation: 'installation.md'
@@ -14,10 +16,34 @@ nav:
   - 'About':
     - ''
     - 'Licence': 'licence.md'
+
+# =========================================
+# Theme
 theme:
-    name: material
-    palette:
-      scheme: default
+  name: material
+  palette:
+
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  features:
+    - content.tabs.link
+
+# =========================================
+# Plugins & Extensions
+plugins:
+  - search
+  - glightbox
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -26,3 +52,10 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
