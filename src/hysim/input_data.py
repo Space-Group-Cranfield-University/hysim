@@ -41,7 +41,7 @@ class Configs:
         Reads contents of yaml
     load_configs(case_directory = ".")
         Walks through case directory and reads configuration files.
-    """    
+    """
 
     valid_config_types = [
         "case_config",
@@ -66,7 +66,7 @@ class Configs:
         ----------
         config_data : dict
             Data read from configuration file
-        """        
+        """
         self.additional_materials.update(config_data["materials"])
 
     def _sort_config_data(self, file_type: str, config_data: dict):
