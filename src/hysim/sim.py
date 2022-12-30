@@ -5,6 +5,7 @@ handle Mitsuba.
 """
 # Debugging
 # import pretty_errors
+# from pprint import pprint
 
 # Logging
 # import logging
@@ -126,7 +127,6 @@ def run_sim(run_directory):
     scene.build_chaser()
     scene.build_target()
     scene.build_earth()
-
     scene.build_scene_dict()
 
     def calculate_relative_distance(p1: list, p2: list):
@@ -164,10 +164,18 @@ def run_sim(run_directory):
     sim.load_scene(scene.scene_dict)
     sim.run()
 
+    print(sim.params)
+    print(sim.params["sensor.film.Band_0.values"])
+    print(sim.params["sensor.film.Band_1.values"])
+    print(sim.params["sensor.film.Band_2.values"])
+    print(sim.params["sensor.film.Band_3.values"])
+
     # ------------------------------- #
     # Export Outputs
     # ------------------------------- #
     output = output_data.OutputHandler(
-        sim.render, scene.chaser.sensor.film, run_directory
+        sim.render,
+        scene.chaser.sensor.film,
+        run_directory,
     )
     output.produce_output_data(user_inputs)
