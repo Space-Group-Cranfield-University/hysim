@@ -97,9 +97,12 @@ class OutputFormatter:
         result_array = np.array(self.render_data)
 
         channel_names = []
+
         for wavelength in self.film_data.spectrum.wavelengths[:-1]:
             wavelength_string = str(wavelength).replace(".", ",")
             channel_names.append(f"S0.{wavelength_string}nm")
+
+        # channel_names = ["Band_3", "Band_4", "Band_5", "Band_6"]
 
         result_bmp = mi.Bitmap(
             result_array,
