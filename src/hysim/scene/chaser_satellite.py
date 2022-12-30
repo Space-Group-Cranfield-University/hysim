@@ -7,7 +7,7 @@ import mitsuba as mi
 import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from hysim.scene.spectra import FilmSensitivitySpectrum
+from hysim.scene import spectra
 
 
 @dataclass
@@ -16,7 +16,7 @@ class SpectralFilm:
 
     Attributes
     ----------
-    spectrum : FilmSensitivitySpectrum
+    spectrum : HyperspectralFilmResponse
         Film spectrum object
     width : int, optional[768]
         Film width in pixels
@@ -34,7 +34,7 @@ class SpectralFilm:
 
     """
 
-    spectrum: FilmSensitivitySpectrum
+    spectrum: spectra.Spectrum
     width: int = 768
     height: int = 576
     component_format: str = "float32"
@@ -118,6 +118,43 @@ class ThinLenseCamera(Camera):
             "type": "thinlens",
             "aperture_radius": self.aperture_radius,
             "focus_distance": self.focus_distance,
+            "fov": self.field_of_view,
+            "fov_axis": self.fov_axis,
+            "near_clip": self.near_clip,
+            "far_clip": self.far_clip,
+            "film": {},
+            "sampler": {},
+        }
+
+
+@dataclass
+class PerspectiveCamera(Camera):
+    """Represents Mitsuba perspective camera
+
+    Attributes
+    ----------
+    field_of_view : float
+        Camera field of view
+    fov_axis : str optional["x"]
+        Camera axis along which field of view is measured
+    camera_dict : dict
+        Dictionary representing camera
+
+    Methods
+    -------
+    build_dict
+        Creates dictionary that represents camera from template
+
+    """
+
+    field_of_view: float = None
+    fov_axis: str = "x"
+    camera_dict: dict = None
+
+    def build_dict(self):
+        """Creates the Thin Lense dictionary using object attributes"""
+        self.camera_dict = {
+            "type": "perspective",
             "fov": self.field_of_view,
             "fov_axis": self.fov_axis,
             "near_clip": self.near_clip,
