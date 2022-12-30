@@ -151,17 +151,28 @@ class SceneBuilder:
         spectrum_data = spd_reader.SPDReader(spectrum_path)
 
         # Build the spectral bands
-        hyperspectral_bands = spectra.FilmSensitivitySpectrum(
-            spectrum_data.wavelengths, spectrum_data.values
-        )
+        imaging_mode = self.user_inputs.sensor_config["imaging_mode"]
+
+        # print(spectrum_data.values.ndim)
+
+        if imaging_mode == "multispectral":
+            film_bands = spectra.MultispectralFilmResponse(
+                spectrum_data.wavelengths, spectrum_data.values
+            )
+        elif imaging_mode == "hyperspectral":
+            film_bands = spectra.HyperspectralFilmResponse(
+                spectrum_data.wavelengths, spectrum_data.values
+            )
+        else:
+            raise ValueError("Imaging mode invalid")
 
         # Build film object
         film = chas.SpectralFilm(
-            hyperspectral_bands, **self.user_inputs.sensor_config["film"]
+            film_bands, **self.user_inputs.sensor_config["film"]
         )
 
         # Build camera object
-        camera = chas.ThinLenseCamera(
+        camera = chas.PerspectiveCamera(
             **self.user_inputs.sensor_config["camera"]
         )
 
