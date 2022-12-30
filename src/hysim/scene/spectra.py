@@ -4,6 +4,7 @@ Collection of classes that store and convert spectrum data
 
 from abc import ABC
 from dataclasses import dataclass
+import numpy as np
 
 
 @dataclass
@@ -71,8 +72,8 @@ class Spectrum(ABC):
         """
         raise NotImplementedError("Feature not yet implemented")
 
-    def create_value_comma_string(self, values: list) -> str:
-        """Returns a string of comma seperated values from list
+    def string_values_from_array(self, values: np.array) -> str:
+        """Returns a string of comma seperated values from numpy array
 
         Parameters
         ----------
@@ -84,8 +85,18 @@ class Spectrum(ABC):
         str
             Comma seperated string of values
         """
-        string_values = [str(value) + "," for value in values]
-        return "".join(string_values)[:-1]
+        return ", ".join(map(str, values))
+
+    def band_name(self, lower_value: int, upper_value: int) -> str:
+        """Creates string describing upper and lower value seperated by an
+        underscore
+
+        Returns
+        -------
+        str
+            String of upper and lower values separated by underscore
+        """
+        return f"{str(lower_value)}_{str(upper_value)}"
 
 
 @dataclass
@@ -106,7 +117,18 @@ class IrradianceSpectrum(Spectrum):
         Build irregular spectrum dictionary for irradiance
     """
 
-    irradiance: list
+    irradiance: np.array
+
+    def __post_init__(self):
+        """Post Initialiser method to check shape of data after init
+
+        Raises
+        ------
+            TypeError if the number of columns in sensitivities array
+            is greater than 1.
+        """
+        if self.irradiance.ndim != 1:
+            raise TypeError("Too many columns for hyperspectral data")
 
     def build_dict(self) -> dict:
         """Build irregular spectrum dictionary for irradiance
@@ -116,24 +138,29 @@ class IrradianceSpectrum(Spectrum):
         dict
             Irradiance spectrum dict
         """
+        # print(", ".join(map(str, self.irradiance[:, 0])))
+        # print(self.string_values_from_array(self.irradiance))
         return {
             "type": "irregular",
-            "wavelengths": self.create_value_comma_string(self.wavelengths),
-            "values": self.create_value_comma_string(self.irradiance),
+            "wavelengths": self.string_values_from_array(self.wavelengths),
+            "values": self.string_values_from_array(self.irradiance),
         }
 
 
 @dataclass
-class FilmSensitivitySpectrum(Spectrum):
-    """A spectrum of film sensitivity for given wavelengths
+class HyperspectralFilmResponse(Spectrum):
+    """A spectrum describing spectral response of hyperspectral film
 
     Represents a spectrum of film sensitivity (quantum efficiency)
     values with corresponding wavelengths. Inherits from Spectrum class.
+    Build_dict method returns a dictionary containing a single narrow band
+    for each wavelength. Each wavelength has a single response value. The
+    total number of bands is determined by the number of data points.
 
     Attributes
     ----------
-    sensitivities : list
-        List of film sensitivities
+    sensitivities : numpy.array
+        Array of film sensitivities
 
     Methods
     -------
@@ -144,18 +171,18 @@ class FilmSensitivitySpectrum(Spectrum):
         Constructs dict for spectrum
     """
 
-    sensitivities: list
+    sensitivities: np.array
 
-    def band_name(self, lower_value: int, upper_value: int) -> str:
-        """Creates string describing upper and lower value seperated by an
-        underscore
+    def __post_init__(self):
+        """Post Initialiser method to check shape of data after init
 
-        Returns
-        -------
-        str
-            String of upper and lower values separated by underscore
+        Raises
+        ------
+            TypeError if the number of columns in sensitivities array
+            is greater than 1.
         """
-        return str(lower_value) + "_" + str(upper_value)
+        if self.sensitivities.ndim != 1:
+            raise TypeError("Too many columns for hyperspectral data")
 
     def build_dict(self) -> dict:
         """Generates a dictionary for given number of bands
@@ -174,14 +201,69 @@ class FilmSensitivitySpectrum(Spectrum):
                         self.wavelengths[index - 1], self.wavelengths[index]
                     ): {
                         "type": "irregular",
+                        # "wavelengths": f"{self.wavelengths[index - 1]},\
+                        #           {self.wavelengths[index]}",
+                        "wavelengths": self.string_values_from_array(
+                            self.wavelengths[(index - 1): index + 1]
+                        ),
+                        # "values": str(self.sensitivities[index - 1])
+                        # + ","
+                        # + str(self.sensitivities[index]),
+                        "values": self.string_values_from_array(
+                            self.sensitivities[(index - 1): index + 1]
+                        ),
+                    }
+                }
+            )
 
-                        "wavelengths":
-                                f"{self.wavelengths[index - 1]},\
-                                  {self.wavelengths[index]}",
+        return band_dict
 
-                        "values": str(self.sensitivities[index - 1])
-                        + ","
-                        + str(self.sensitivities[index]),
+
+@dataclass
+class MultispectralFilmResponse(Spectrum):
+    """A spectrum of film sensitivity for multispectral film
+
+    Represents a spectrum of film sensitivity (quantum efficiency)
+    values with corresponding wavelengths. Inherits from Spectrum class.
+    Each band contains spectral response over a wide range of wavelengths.
+    The total number of bands is determined by the number of band response
+    columns provided by the data file.
+
+    Attributes
+    ----------
+    sensitivities : list
+        List of film sensitivities
+
+    Methods
+    -------
+    band_name(lower_value, upper_value)
+        Creates string describing upper and lower value seperated by an
+        underscore
+    build_dict
+        Constructs dict for spectrum
+    """
+
+    sensitivities: np.array
+
+    def build_dict(self) -> dict:
+        """Generates a dictionary for given number of bands
+
+        Returns
+        -------
+        dict
+            Dictionary representing film sensitivity spectrum
+        """
+        band_dict = {}
+
+        for i, band_data in enumerate(self.sensitivities.T):
+            band_dict.update(
+                {
+                    f"Band_{i}": {
+                        "type": "irregular",
+                        "wavelengths": self.string_values_from_array(
+                            self.wavelengths
+                        ),
+                        "values": self.string_values_from_array(band_data),
                     }
                 }
             )
