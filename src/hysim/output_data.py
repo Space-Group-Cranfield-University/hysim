@@ -4,11 +4,37 @@ This module contains classes to handle and format output render data from
 the simulator.
 """
 import os
+from itertools import tee
+
 import mitsuba as mi
 import numpy as np
 import imageio as iio
 
 
+# Useful functions. TODO: During refactoring, move to utils module
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+def two_value_moving_average(values: list) -> list:
+    """Creates moving average with a window size of two
+
+    Parameters
+    ----------
+    values : list
+        List of values to average
+
+    Returns
+    -------
+    list
+        Moving average result
+    """
+    return [(lower + higher) / 2 for lower, higher in pairwise(values)]
+
+
+# Core Classes
 class OutputHandler:
     """Handles output formatter
 
@@ -52,7 +78,7 @@ class OutputHandler:
         """
         for output_selection in user_inputs.case_config["output"]:
             output_format = self.output.formats[output_selection["format"]]
-            output_format(output_selection["file_name"])
+            output_format(output_selection, user_inputs)
 
 
 class OutputFormatter:
@@ -86,24 +112,62 @@ class OutputFormatter:
             "png": self.export_as_png,
         }
 
-    def export_as_exr(self, output_file_name: str):
+    def create_channel_names(self, wavelengths: list) -> list:
+        """Generates list of channel names for the following
+        exr header format: S0.xxx,xxnm where x is wavelength.
+
+        Parameters
+        ----------
+        wavelengths : list
+            List of reference wavelengths used for channel name
+
+        Returns
+        -------
+        channel_names : list(str)
+            List of channel names.
+        """
+        channel_names = []
+
+        for wavelength in wavelengths:
+            wavelength_string = str(wavelength).replace(".", ",")
+            channel_names.append(f"S0.{wavelength_string}nm")
+
+        return channel_names
+
+    def export_as_exr(self, output_params, user_inputs):
         """Exports render data as .exr file
 
         Parameters
         ----------
         output_file_name : str
             Exported file name
+        user_inputs
+            Object containing dictionaries of user inputs
         """
+
+        # Multispectral case
+        if user_inputs.sensor_config["imaging_mode"] == "multispectral":
+            # Find user input for band reference values
+            try:
+                channel_names = self.create_channel_names(
+                    output_params["reference_wavelengths"]
+                )
+            except KeyError:
+                print("reference_wavelengths required for multispectral .exr")
+
+        # Hyperspectral case
+        elif user_inputs.sensor_config["imaging_mode"] == "hyperspectral":
+            # User rolling average of narrow band values
+            channel_names = self.create_channel_names(
+                two_value_moving_average(self.film_data.spectrum.wavelengths)
+            )
+
+        if len(channel_names) != len(self.render_data[0, 0, :]):
+            raise ValueError(
+                "Total reference wavelengths and channels should be the same"
+            )
+
         result_array = np.array(self.render_data)
-
-        channel_names = []
-
-        for wavelength in self.film_data.spectrum.wavelengths[:-1]:
-            wavelength_string = str(wavelength).replace(".", ",")
-            channel_names.append(f"S0.{wavelength_string}nm")
-
-        # channel_names = ["Band_3", "Band_4", "Band_5", "Band_6"]
-
         result_bmp = mi.Bitmap(
             result_array,
             pixel_format=mi.Bitmap.PixelFormat.MultiChannel,
@@ -113,9 +177,9 @@ class OutputFormatter:
         result_bmp.metadata()["pixelAspectRatio"] = 1
         result_bmp.metadata()["screenWindowWidth"] = 1
 
-        mi.util.write_bitmap(output_file_name, result_bmp)
+        mi.util.write_bitmap(output_params["file_name"], result_bmp)
 
-    def export_as_png(self, output_file_name: str):
+    def export_as_png(self, output_file_name: str, _):
         """Exports render data as .png files
 
         Parameters

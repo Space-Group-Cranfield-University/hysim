@@ -164,11 +164,11 @@ def run_sim(run_directory):
     sim.load_scene(scene.scene_dict)
     sim.run()
 
-    print(sim.params)
-    print(sim.params["sensor.film.Band_0.values"])
-    print(sim.params["sensor.film.Band_1.values"])
-    print(sim.params["sensor.film.Band_2.values"])
-    print(sim.params["sensor.film.Band_3.values"])
+    # print(sim.params)
+    # print(sim.params["sensor.film.Band_0.values"])
+    # print(sim.params["sensor.film.Band_1.values"])
+    # print(sim.params["sensor.film.Band_2.values"])
+    # print(sim.params["sensor.film.Band_3.values"])
 
     # ------------------------------- #
     # Export Outputs
