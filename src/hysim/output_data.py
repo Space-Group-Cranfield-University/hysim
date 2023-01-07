@@ -99,7 +99,7 @@ class OutputFormatter:
 
     Methods
     -------
-    export_as_exr(output_file_name)
+    export_as_exr(output_params["file_name"])
         Exports rendered scene data in OpenEXR format
     """
 
@@ -139,7 +139,7 @@ class OutputFormatter:
 
         Parameters
         ----------
-        output_file_name : str
+        output_params["file_name"] : str
             Exported file name
         user_inputs
             Object containing dictionaries of user inputs
@@ -179,31 +179,32 @@ class OutputFormatter:
 
         mi.util.write_bitmap(output_params["file_name"], result_bmp)
 
-    def export_as_png(self, output_file_name: str, _):
+    def export_as_png(self, output_params: str, _):
         """Exports render data as .png files
 
         Parameters
         ----------
-        output_file_name : str
-            Exported file name
+        output_params
+            User provided output parameters
         """
-        if not os.path.isdir(output_file_name):
-            os.mkdir(output_file_name)
+        if not os.path.isdir(output_params["file_name"]):
+            os.mkdir(output_params["file_name"])
         else:
             # TODO: Logger here to say it already exists
             pass
 
         for i, _ in enumerate(self.render_data[0, 0, :]):
-            name = f"Band_{i}.png"
+            dir_name = output_params["file_name"]
+            band_name = f"Band_{i}.png"
             results_array = np.array(self.render_data[:, :, i])
             iio.imwrite(
-                f"{output_file_name}/{name}",
-                np.interp(
-                    results_array,
-                    (results_array.min(), results_array.max()),
-                    (0, 255),
-                ).astype(np.uint8),
+                f"{dir_name}/{band_name}",
+                # np.interp(
+                #     results_array,
+                #     (results_array.min(), results_array.max()),
+                #     (0, 255),
+                (results_array).astype(np.uint8),
             )
 
-    def export_as_tiff(self, output_file_name):
+    def export_as_tiff(self, output_params):
         raise NotImplementedError("Tiff export not added")
