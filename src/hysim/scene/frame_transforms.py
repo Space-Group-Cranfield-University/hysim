@@ -116,7 +116,7 @@ def convert_kepler_to_state_vectors(elements: list, epoch: float) -> list:
             MU_EARTH,
         ],
         epoch,
-    )
+    )*1000
 
 
 def check_for_null(tle_data: list) -> float:
@@ -159,64 +159,84 @@ def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> list:
         float(spice.bodvrd("EARTH", geoph_data, 1)[1])
         for geoph_data in geoph_data_list
     ]
-    return spice.evsgp4(epoch, geophs, tle_elements)
+    return spice.evsgp4(epoch, geophs, tle_elements) * 1000
 
 
-def compute_eci_to_lvlh_rotation_matrix(state_vectors: list) -> np.array:
-    """Determines rotation matrix used to convert ECI to LVLH
+# def compute_eci_to_lvlh_rotation_matrix(state_vectors: list) -> np.array:
+#     """Determines rotation matrix used to convert ECI to LVLH
 
-    Parameters
-    ----------
-    state_vectors : list
-        State vectors as list [x, y, z, vx, vy, vz] [m/s]
+#     Parameters
+#     ----------
+#     state_vectors : list
+#         State vectors as list [x, y, z, vx, vy, vz] [m/s]
 
-    Returns
-    -------
-    array
-        ECI -> LVLH transformation matrix
-    """
-    position = state_vectors[0:3]
-    velocity = state_vectors[3:6]
+#     Returns
+#     -------
+#     array
+#         ECI -> LVLH transformation matrix
+#     """
+#     position = state_vectors[0:3]
+#     velocity = state_vectors[3:6]
 
-    z_component = np.array(-position / np.linalg.norm(position))
+#     z_component = np.array(-position / np.linalg.norm(position))
 
-    x_component = np.array(
-        -np.cross(position, velocity)
-        / np.linalg.norm(np.cross(position, velocity))
-    )
+#     x_component = np.array(
+#         -np.cross(position, velocity)
+#         / np.linalg.norm(np.cross(position, velocity))
+#     )
 
-    y_component = np.array(np.cross(z_component, x_component))
+#     y_component = np.array(np.cross(z_component, x_component))
 
-    return np.transpose(np.array([x_component, y_component, z_component]))
+#     return np.transpose(np.array([x_component, y_component, z_component]))
 
 
-def convert_eci_to_lvlh(
-    state_vectors: list, transform: np.array, origin: list
-) -> list:
-    """Converts position in ECI to LVLH frame
+# def convert_eci_to_lvlh(
+#     state_vectors: list, transform: np.array, origin: list
+# ) -> list:
+#     """Converts position in ECI to LVLH frame
 
-    Parameters
-    ----------
-    state_vectors : list
-        State vectors as list [x, y, z, vx, vy, vz] [m/s]
-    transform : np.array
-        ECI -> LVLH transformation matrix
-    origin : list
-        Origin of LVLH frame
+#     Parameters
+#     ----------
+#     state_vectors : list
+#         State vectors as list [x, y, z, vx, vy, vz] [m/s]
+#     transform : np.array
+#         ECI -> LVLH transformation matrix
+#     origin : list
+#         Origin of LVLH frame
 
-    Returns
-    -------
-    list
-        Coordinates in LVLH frame
-    """
-    return (
-        np.einsum("ij,i->j", transform, state_vectors[:3])
-        + [
-            0,
-            0,
-            np.linalg.norm(origin[:3]),
-        ]
-    ) * 1000
+#     Returns
+#     -------
+#     list
+#         Coordinates in LVLH frame
+#     """
+#     return (
+#         np.einsum("ij,i->j", transform, state_vectors[:3])
+#         + [
+#             0,
+#             0,
+#             np.linalg.norm(origin[:3]),
+#         ]
+#     ) * 1000
+
+
+def compute_eci_to_lvlh_rotation_matrix(state):
+    # Angular momentum of target
+    angular_momentum = np.cross(state[:3], state[3:])
+
+    # Unit vectors of the co-moving frame
+    k = (state[:3]/np.linalg.norm(state[:3]))
+    j = -angular_momentum/np.linalg.norm(-angular_momentum)
+    i = np.cross(j, k)
+
+    return np.array([i, j, k])
+
+
+def convert_eci_to_lvlh(state, transformation_matrix, origin):
+
+    # Relative position
+    Rr = origin - state[:3]
+
+    return np.matmul(transformation_matrix, np.transpose(Rr))
 
 
 class MissionInputProcessor:
@@ -291,7 +311,7 @@ class MissionInputProcessor:
         self.target_state_vectors = []
         self.chaser_state_vectors = []
         self.sun_state_vectors = []
-        self.earth_state_vectors = [0, 0, 0]
+        self.earth_state_vectors = [0, 0, 0, 0, 0, 0]
 
         # Load inputs and calculate state vectors
         self.convert_inputs_to_state_vectors()
@@ -307,10 +327,13 @@ class MissionInputProcessor:
         list
             Sun state vector
         """
-        [sun_location, _] = spice.spkpos(
-            "SUN", self.epoch, "J2000", "NONE", "EARTH"
+        # Earth ID = 399
+        # Sun ID = 10
+
+        [sun_location, _] = spice.spkez(
+            10, self.epoch, "J2000", "NONE", 399
         )
-        return sun_location
+        return sun_location*1000
 
     def load_state_vectors(self, location_vector: list, _) -> np.array:
         """Returns location state vector
@@ -352,7 +375,6 @@ class MissionInputProcessor:
         self.chaser_state_vectors = self.convert_input("chaser")
         self.target_state_vectors = self.convert_input("target")
         self.sun_state_vectors = self.get_sun_location()
-        print(type(self.target_state_vectors))
 
     @property
     def target_position(self) -> list:
@@ -366,7 +388,7 @@ class MissionInputProcessor:
         return convert_eci_to_lvlh(
             self.target_state_vectors,
             self.local_frame_transform,
-            self.target_state_vectors,
+            self.target_state_vectors[:3],
         )
 
     @property
@@ -381,7 +403,7 @@ class MissionInputProcessor:
         return convert_eci_to_lvlh(
             self.chaser_state_vectors,
             self.local_frame_transform,
-            self.target_state_vectors,
+            self.target_state_vectors[:3],
         )
 
     @property
@@ -396,7 +418,7 @@ class MissionInputProcessor:
         return convert_eci_to_lvlh(
             self.earth_state_vectors,
             self.local_frame_transform,
-            self.target_state_vectors,
+            self.target_state_vectors[:3],
         )
 
     @property
@@ -408,9 +430,10 @@ class MissionInputProcessor:
         list
             Sun direction vector
         """
+        print(self.sun_state_vectors)
         sun_position = convert_eci_to_lvlh(
             self.sun_state_vectors,
             self.local_frame_transform,
-            self.target_state_vectors,
+            self.target_state_vectors[:3],
         )
         return -sun_position / np.linalg.norm(sun_position)
