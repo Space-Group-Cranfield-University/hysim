@@ -4,7 +4,6 @@ This module contains classes representing the chaser spacecraft and
 the hyperspectral sensor.
 """
 import mitsuba as mi
-import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from hysim.scene import spectra
@@ -255,9 +254,9 @@ class Chaser:
         """
         return (
             mi.ScalarTransform4f.translate(self.position)
-            .rotate(axis=[1, 0, 0], angle=np.rad2deg(self.attitude[0]))
-            .rotate(axis=[0, 1, 0], angle=np.rad2deg(self.attitude[1]))
-            .rotate(axis=[0, 0, 1], angle=np.rad2deg(self.attitude[2]))
+            .rotate(axis=[1, 0, 0], angle=self.attitude[0])
+            .rotate(axis=[0, 1, 0], angle=self.attitude[1])
+            .rotate(axis=[0, 0, 1], angle=self.attitude[2])
         )
 
     def build_dict(self):
