@@ -2,9 +2,11 @@ site_name: HySim
 
 # =========================================
 # Contents
+repo_url: https://github.com/Space-Group-Cranfield-University/hysim
 nav:
-  - Home: index.md
-  - Installation: 'installation.md'
+  - 'Getting Started':
+    - 'Overview': index.md
+    - 'Installation': 'installation.md'
   - 'User Guide':
     - 'Configuring a case': 'user_guide/configuring.md'
     - 'Preparing a target mesh': 'user_guide/mesh_prep.md'
@@ -14,7 +16,6 @@ nav:
     - 'TerraSAR Flyby': 'example_cases/terrasar_case.md'
     - 'ISS Flyby': 'example_cases/iss_case.md'
   - 'About':
-    - ''
     - 'Licence': 'licence.md'
 
 # =========================================
@@ -37,12 +38,36 @@ theme:
 
   features:
     - content.tabs.link
+    - navigation.sections
+    - navigation.indexes
+    - navigation.footer
+  
+extra:
+  generator: false
+copyright: Copyright &copy; 2023 Cranfield University
 
 # =========================================
 # Plugins & Extensions
 plugins:
   - search
   - glightbox
+  - print-site:
+      add_to_navigation: true
+      print_page_title: 'Print Docs'
+      add_print_site_banner: true
+      # Table of contents
+      add_table_of_contents: true
+      toc_title: 'Table of Contents'
+      toc_depth: 6
+      # Content-related
+      add_full_urls: true
+      enumerate_headings: false
+      enumerate_figures: false
+      add_cover_page: false
+      cover_page_template: ""
+      path_to_pdf: ""
+      include_css: true
+      enabled: true
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -53,6 +78,7 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
   - admonition
+  - abbr
   - pymdownx.details
   - attr_list
   - md_in_html

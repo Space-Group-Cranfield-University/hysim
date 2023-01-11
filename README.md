@@ -5,13 +5,13 @@ Welcome to HySim, The Hyperspectral Space-to-Space Imaging Simulator. HySim is a
 The latest version supports the following features:
 
 - Quasi-static scene definition (Single locations of target and imager spacecraft)
-- Orbit locations from TLE, Keplerian Elements and Earth Centered Inertial coordinates.
+- Orbit locations from TLE, Keplerian Elements and Orbit State Vectors.
 - Support for PLY mesh files.
 - Multiple component target models.
 - Database of diffuse spacecraft material spectrums.
 - User defined Hyperspectral and Multispectral sensors.
 
-HySim is largely based around the [Mitsuba 3](https://mitsuba.readthedocs.io/en/stable/#). render engine which is used to render the scenes. In the current version of the code only the base version of Mitsuba is used, therefore any limitations in Mitsuba are also applied to HySim. For advanced use cases it is best for a user to familiarise themselves with Mitsuba
+HySim is largely based around the [Mitsuba 3](https://mitsuba.readthedocs.io/en/stable/#) render engine which is used to render the scenes. In the current version of the code only the base version of Mitsuba is used, therefore any limitations in Mitsuba are also applied to HySim. For advanced use cases it is best for a user to familiarise themselves with Mitsuba
 
 ## Requirements
 - Python >= 3.8
