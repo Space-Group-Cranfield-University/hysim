@@ -138,8 +138,6 @@ class IrradianceSpectrum(Spectrum):
         dict
             Irradiance spectrum dict
         """
-        # print(", ".join(map(str, self.irradiance[:, 0])))
-        # print(self.string_values_from_array(self.irradiance))
         return {
             "type": "irregular",
             "wavelengths": self.string_values_from_array(self.wavelengths),
