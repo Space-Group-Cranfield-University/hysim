@@ -150,8 +150,6 @@ class SceneBuilder:
         # Build the spectral bands
         imaging_mode = self.user_inputs.sensor_config["imaging_mode"]
 
-        # print(spectrum_data.values.ndim)
-
         if imaging_mode == "multispectral":
             film_bands = spectra.MultispectralFilmResponse(
                 spectrum_data.wavelengths, spectrum_data.values
