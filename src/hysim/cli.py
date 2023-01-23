@@ -4,6 +4,8 @@ Provides an entry point for package and runs main function
 """
 
 import pkg_resources
+import logging
+import sys
 import argparse
 from pathlib import Path
 from hysim import sim
@@ -55,7 +57,16 @@ def main():
     """Main function
 
     Retrieves cli arguments runs command if one is passed
+    and initiates logger
     """
+    # Logger
+    logging.basicConfig(
+        format=' %(levelname)-8s %(message)s',
+        stream=sys.stdout,
+        level=logging.INFO
+    )
+
+    # Command Line Interface
     args = parser.parse_args()
 
     if not args.command:

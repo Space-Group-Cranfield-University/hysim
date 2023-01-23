@@ -5,10 +5,9 @@ handle Mitsuba.
 """
 # Debugging
 # import pretty_errors
-# from pprint import pprint
 
 # Logging
-# import logging
+import logging
 
 # Packages
 import mitsuba as mi
@@ -27,7 +26,6 @@ from hysim.scene import frame_transforms as frames
 
 class NoSceneLoaded(Exception):
     """Used to handle running a render without required data"""
-
     pass
 
 
@@ -105,13 +103,17 @@ def run_sim(run_directory):
 
     """
 
+    logging.info("Running Simulation Case")
     # ------------------------------- #
     # Get user Inputs
     # ------------------------------- #
+    logging.info('Getting user inputs from configuration files')
 
     user_inputs = input_data.Configs()
     user_inputs.load_configs(run_directory)
     kernel_paths = dh.get_kernel_paths()
+
+    logging.info('Calculating scene geometry from orbit data')
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_paths
     )
@@ -120,6 +122,7 @@ def run_sim(run_directory):
     # ------------------------------- #
     # Assemble Scene
     # ------------------------------- #
+    logging.info('Building scene')
     scene = sc.SceneBuilder(user_inputs, orbit_data)
     scene.build_integrator()
     scene.build_sampler()
@@ -154,22 +157,24 @@ def run_sim(run_directory):
     relative_distance = calculate_relative_distance(
         scene.chaser.position, scene.target.position
     )
-    print(f"Relative Distance: {relative_distance}")
+
+    logging.info("Relative distance to target: %0.2fm", relative_distance)
 
     # ------------------------------- #
     # Load to mitsuba and run
     # ------------------------------- #
+    logging.info('Loading scene into Mitsuba')
 
     sim = RendererControl()
     sim.load_scene(scene.scene_dict)
+    logging.info('Scene assembled successfully')
+    logging.info('Running Mitsuba')
+
+    print('\n')
     sim.run()
+    print('\n')
 
-    # print(sim.params)
-    # print(sim.params["sensor.film.Band_0.values"])
-    # print(sim.params["sensor.film.Band_1.values"])
-    # print(sim.params["sensor.film.Band_2.values"])
-    # print(sim.params["sensor.film.Band_3.values"])
-
+    logging.info('Render complete')
     # ------------------------------- #
     # Export Outputs
     # ------------------------------- #

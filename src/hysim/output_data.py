@@ -4,6 +4,7 @@ This module contains classes to handle and format output render data from
 the simulator.
 """
 import os
+import logging
 from itertools import tee
 
 import mitsuba as mi
@@ -145,6 +146,8 @@ class OutputFormatter:
             Object containing dictionaries of user inputs
         """
 
+        logging.info('Exporting results as EXR File')
+
         # Multispectral case
         if user_inputs.sensor_config["imaging_mode"] == "multispectral":
             # Find user input for band reference values
@@ -153,7 +156,9 @@ class OutputFormatter:
                     output_params["reference_wavelengths"]
                 )
             except KeyError:
-                print("reference_wavelengths required for multispectral .exr")
+                logging.error(
+                    "reference_wavelengths required for multispectral .exr"
+                )
 
         # Hyperspectral case
         elif user_inputs.sensor_config["imaging_mode"] == "hyperspectral":
@@ -187,6 +192,7 @@ class OutputFormatter:
         output_params
             User provided output parameters
         """
+        logging.info('Exporting results as PNG files')
         if not os.path.isdir(output_params["file_name"]):
             os.mkdir(output_params["file_name"])
         else:
