@@ -430,7 +430,6 @@ class MissionInputProcessor:
         list
             Sun direction vector
         """
-        print(self.sun_state_vectors)
         sun_position = convert_eci_to_lvlh(
             self.sun_state_vectors,
             self.local_frame_transform,
