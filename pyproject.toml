@@ -34,7 +34,6 @@ dependencies = [
      "spiceypy>=5.1.2",
      "imageio>=2.23.0",
 ]
-# dynamic = ["dependencies"]
 
 [project.scripts]  # Optional
 hysim = "hysim.cli:main"
@@ -44,6 +43,3 @@ where = ["src"]
 
 [tool.distutils.bdist_wheel]
 universal = true
-
-# [tool.setuptools.dynamic]
-# dependencies = {file = ["requirements.txt"]}
