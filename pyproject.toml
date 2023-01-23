@@ -9,25 +9,32 @@ build-backend = "setuptools.build_meta"
 [project]
 # Project Information
 name = "hysim" # Required
-version = "0.1.0"
+version = "0.1.1"
 description = "Hyperspectral Space-to-Space Imaging Simulator"
-# requires-python = ">=3.8"
+requires-python = ">=3.9"
+authors = [
+    {name = "Cameron Leslie", email= "cameron.f.leslie@cranfield.ac.uk"},
+    {name = "Leonard Felicetti", email= "Leonard.Felicetti@cranfield.ac.uk"},
+    {name = "Stephen Hobbs", email= "S.E.Hobbs@cranfield.ac.uk"},
+    {name = "Samuel Rowling"},
+]
+maintainers = [
+     {name = "Cameron Leslie", email= "cameron.f.leslie@cranfield.ac.uk"}
+]
 readme = "README.md"
-# licence = {file = "LICENCE.txt"}
 
 classifiers=[
      "Development Status :: Pre-Alpha",
-     # "Licence :: TBC",
 ]
+
 dependencies = [
      "numpy>=1.23.5",
-#     "mitsuba>=3.1.0",
+     "mitsuba>=3.1.0",
      "PyYAML>=6.0",
      "spiceypy>=5.1.2",
      "imageio>=2.23.0",
 ]
 # dynamic = ["dependencies"]
-
 
 [project.scripts]  # Optional
 hysim = "hysim.cli:main"
