@@ -99,27 +99,42 @@ class Earth:
                 "type": "ply",
                 "filename": self.mesh_path,
                 "to_world": mi.ScalarTransform4f.translate(self.position),
-                "earth_surface": {
-                    "type": "blendbsdf",
-                    "weight": {
-                        "type": "bitmap",
-                        "filename": self.earth_image_path,
-                        "wrap_mode": "clamp",
-                    },
-                    "ocean": {
-                        "type": "diffuse",
-                        "reflectance": {
-                            "type": "spectrum",
-                            "filename": self.ocean_spectrum_path,
-                        },
-                    },
-                    "soil": {
-                        "type": "diffuse",
-                        "reflectance": {
-                            "type": "spectrum",
-                            "filename": self.soil_spectrum_path,
-                        },
+                "ocean_surface": {
+                    "type": "diffuse",
+                    "reflectance": {
+                        "type": "spectrum",
+                        "filename": self.ocean_spectrum_path,
                     },
                 },
             }
         }
+
+        # self.earth_dict = {
+        #     "earth": {
+        #         "type": "ply",
+        #         "filename": self.mesh_path,
+        #         "to_world": mi.ScalarTransform4f.translate(self.position),
+        #         "earth_surface": {
+        #             "type": "blendbsdf",
+        #             "weight": {
+        #                 "type": "bitmap",
+        #                 "filename": self.earth_image_path,
+        #                 "wrap_mode": "clamp",
+        #             },
+        #             "ocean": {
+        #                 "type": "diffuse",
+        #                 "reflectance": {
+        #                     "type": "spectrum",
+        #                     "filename": self.ocean_spectrum_path,
+        #                 },
+        #             },
+        #             "soil": {
+        #                 "type": "diffuse",
+        #                 "reflectance": {
+        #                     "type": "spectrum",
+        #                     "filename": self.soil_spectrum_path,
+        #                 },
+        #             },
+        #         },
+        #     }
+        # }
