@@ -35,7 +35,7 @@ dependencies = [
      "imageio>=2.23.0",
 ]
 
-[project.scripts]  # Optional
+[project.scripts]  
 hysim = "hysim.cli:main"
 
 [tool.setuptools.packages.find]
