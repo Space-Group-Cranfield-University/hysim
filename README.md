@@ -32,7 +32,7 @@ pip 22.3.1
 
 ```
 
-HySim can be installed with pip using the wheel included in the project deliverables. After navigating to the directory containing the wheel and install using:
+HySim can be installed with pip using the wheel located in the distrbution directory. After navigating to the directory containing the wheel and install using:
 
 ```console
 > pip install hysim.whl
