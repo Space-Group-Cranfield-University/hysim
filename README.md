@@ -33,15 +33,20 @@ Python 3.9.15
 pip 22.3.1
 
 ```
-
-HySim can be installed with pip using the wheel located in the distrbution directory. After navigating to the directory containing the wheel and install using:
+HySim can be installed directly from github:
 
 ```console
-> pip install hysim.whl
+pip install git+https://github.com/Space-Group-Cranfield-University/hysim
+```
+
+HySim can also be installed with pip using the wheel located in the distrbution directory. After navigating to the directory containing the wheel and install using:
+
+```console
+pip install hysim.whl
 ```
 Note the name of the wheel here is just an example. To test the installation run:
 
 ```console
-> hysim --version
+hysim --version
 ```
 The output should show the currently installed version of HySim such as ```hysim 0.1.0```.
