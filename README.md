@@ -2,6 +2,8 @@
 
 Welcome to HySim, The Hyperspectral Space-to-Space Imaging Simulator. HySim is an imaging simulation tool designed for space-based proximity operations that involve hyperspectral and multispectral sensors. The program generates physics based renders of the space environment and resulting hyperspectral data given mission parameters as inputs.
 
+Documentation: <https://space-group-cranfield-university.github.io/hysim/>
+
 The latest version supports the following features:
 
 - Quasi-static scene definition (Single locations of target and imager spacecraft)
