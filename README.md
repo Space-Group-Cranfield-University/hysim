@@ -14,7 +14,7 @@ The latest version supports the following features:
 HySim is largely based around the [Mitsuba 3](https://mitsuba.readthedocs.io/en/stable/#) render engine which is used to render the scenes. In the current version of the code only the base version of Mitsuba is used, therefore any limitations in Mitsuba are also applied to HySim. For advanced use cases it is best for a user to familiarise themselves with Mitsuba
 
 ## Requirements
-- Python >= 3.8
+- Python >= 3.9
 
 ## Installing HySim
 
