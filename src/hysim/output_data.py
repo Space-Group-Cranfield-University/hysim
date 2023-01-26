@@ -111,6 +111,7 @@ class OutputFormatter:
         self.formats = {
             "exr": self.export_as_exr,
             "png": self.export_as_png,
+            "csv": self.export_as_csv,
         }
 
     def create_channel_names(self, wavelengths: list) -> list:
@@ -146,7 +147,7 @@ class OutputFormatter:
             Object containing dictionaries of user inputs
         """
 
-        logging.info('Exporting results as EXR File')
+        logging.info("Exporting results as EXR File")
 
         # Multispectral case
         if user_inputs.sensor_config["imaging_mode"] == "multispectral":
@@ -173,9 +174,15 @@ class OutputFormatter:
             )
 
         result_array = np.array(self.render_data)
+
+        if len(self.render_data[0, 0, :]) == 1:
+            pixel_format = mi.Bitmap.PixelFormat.Y
+        else:
+            pixel_format = mi.Bitmap.PixelFormat.MultiChannel
+
         result_bmp = mi.Bitmap(
             result_array,
-            pixel_format=mi.Bitmap.PixelFormat.MultiChannel,
+            pixel_format=pixel_format,
             channel_names=channel_names,
         )
 
@@ -192,24 +199,48 @@ class OutputFormatter:
         output_params
             User provided output parameters
         """
-        logging.info('Exporting results as PNG files')
+        logging.info("Exporting results as PNG files")
         if not os.path.isdir(output_params["file_name"]):
             os.mkdir(output_params["file_name"])
         else:
             # TODO: Logger here to say it already exists
             pass
 
-        for i, _ in enumerate(self.render_data[0, 0, :]):
+        for i in range(len(self.render_data[0, 0, :])):
             dir_name = output_params["file_name"]
             band_name = f"Band_{i}.png"
             results_array = np.array(self.render_data[:, :, i])
             iio.imwrite(
                 f"{dir_name}/{band_name}",
                 # np.interp(
-                #     results_array,
-                #     (results_array.min(), results_array.max()),
-                #     (0, 255),
+                #      results_array,
+                #      (results_array.min(), results_array.max()),
+                #      (0, 255)),
                 (results_array).astype(np.uint8),
+                # prefer_uint8=False
+            )
+
+    def export_as_csv(self, output_params: str, _):
+        """Exports render data as .csv files
+
+        Parameters
+        ----------
+        output_params
+            User provided output parameters
+        """
+        logging.info("Exporting results as CSV files")
+        if not os.path.isdir(output_params["file_name"]):
+            os.mkdir(output_params["file_name"])
+        else:
+            # TODO: Logger here to say it already exists
+            pass
+
+        for i in range(len(self.render_data[0, 0, :])):
+            dir_name = output_params["file_name"]
+            band_name = f"Band_{i}.csv"
+            results_array = np.array(self.render_data[:, :, i])
+            np.savetxt(
+                f"{dir_name}/{band_name}", results_array, delimiter=","
             )
 
     def export_as_tiff(self, output_params):

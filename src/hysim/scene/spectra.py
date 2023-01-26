@@ -252,8 +252,15 @@ class MultispectralFilmResponse(Spectrum):
             Dictionary representing film sensitivity spectrum
         """
         band_dict = {}
+        # NOTE: This needs refactored to properly handle single column case
 
-        for i, band_data in enumerate(self.sensitivities.T):
+        if np.ndim(self.sensitivities) == 1:
+            sensitivity_array = np.expand_dims(self.sensitivities, axis=1)
+        else:
+            sensitivity_array = self.sensitivities
+
+        for i, band_data in enumerate(sensitivity_array.T):
+
             band_dict.update(
                 {
                     f"Band_{i}": {
