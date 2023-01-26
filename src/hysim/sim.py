@@ -163,6 +163,10 @@ def run_sim(run_directory):
     # ------------------------------- #
     # Load to mitsuba and run
     # ------------------------------- #
+
+    logging.debug('Final Scene Dictionary...')
+    logging.debug(scene.scene_dict)
+
     logging.info('Loading scene into Mitsuba')
 
     sim = RendererControl()
