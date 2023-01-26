@@ -1,0 +1,32 @@
+{
+    "debris_sat_anodized_unpainted_Al_6061":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "Anodized_Unpainted_Al_6061.spd"
+            }
+        }    
+    },
+    "debris_sat_utj_solar_cells":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "DebrisSat_UTJ_Solar_Cells.spd"
+            }
+        }
+    },
+    "debris_sat_kapton_polimide_mli":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "DebrisSat_MLI_Kapton_Polyimide.spd"
+            }
+        }
+    }
+}
