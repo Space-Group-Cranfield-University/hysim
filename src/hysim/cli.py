@@ -60,8 +60,6 @@ def main():
     Retrieves cli arguments runs command if one is passed
     and initiates logger
     """
-
-
     # Command Line Interface
     args = parser.parse_args()
 
