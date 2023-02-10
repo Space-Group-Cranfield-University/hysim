@@ -26,6 +26,7 @@ from hysim.scene import frame_transforms as frames
 
 class NoSceneLoaded(Exception):
     """Used to handle running a render without required data"""
+
     pass
 
 
@@ -107,13 +108,13 @@ def run_sim(run_directory):
     # ------------------------------- #
     # Get user Inputs
     # ------------------------------- #
-    logging.info('Getting user inputs from configuration files')
+    logging.info("Getting user inputs from configuration files")
 
     user_inputs = input_data.Configs()
     user_inputs.load_configs(run_directory)
     kernel_paths = dh.get_kernel_paths()
 
-    logging.info('Calculating scene geometry from orbit data')
+    logging.info("Calculating scene geometry from orbit data")
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_paths
     )
@@ -122,7 +123,7 @@ def run_sim(run_directory):
     # ------------------------------- #
     # Assemble Scene
     # ------------------------------- #
-    logging.info('Building scene')
+    logging.info("Building scene")
     scene = sc.SceneBuilder(user_inputs, orbit_data)
     scene.build_integrator()
     scene.build_sampler()
@@ -158,27 +159,30 @@ def run_sim(run_directory):
         scene.chaser.position, scene.target.position
     )
 
+    logging.debug(
+        f"Chaser ECI Coordinates: {orbit_data.chaser_state_vectors}"
+    )
     logging.info("Relative distance to target: %0.2fm", relative_distance)
 
     # ------------------------------- #
     # Load to mitsuba and run
     # ------------------------------- #
 
-    logging.debug('Final Scene Dictionary...')
+    logging.debug("Final Scene Dictionary...")
     logging.debug(scene.scene_dict)
 
-    logging.info('Loading scene into Mitsuba')
+    logging.info("Loading scene into Mitsuba")
 
     sim = RendererControl()
     sim.load_scene(scene.scene_dict)
-    logging.info('Scene assembled successfully')
-    logging.info('Running Mitsuba')
+    logging.info("Scene assembled successfully")
+    logging.info("Running Mitsuba")
 
-    print('\n')
+    print("\n")
     sim.run()
-    print('\n')
+    print("\n")
 
-    logging.info('Render complete')
+    logging.info("Render complete")
     # ------------------------------- #
     # Export Outputs
     # ------------------------------- #
