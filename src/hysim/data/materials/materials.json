@@ -28,5 +28,235 @@
                 "filename": "DebrisSat_MLI_Kapton_Polyimide.spd"
             }
         }
+    },
+    "black_paint":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "black_paint.spd"
+            }
+        }
+    },
+    "black_COPV":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "black_COPV.spd"
+            }
+        }
+    },
+    "carbon_comp":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "carbon_comp.spd"
+            }
+        }
+    },
+    "circuitboard_blue":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "circuitboard_blue.spd"
+            }
+        }
+    },
+    "circuitboard_brown":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "circuitboard_brown.spd"
+            }
+        }
+    },
+    "circuitboard_green":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "circuitboard_green.spd"
+            }
+        }
+    },
+    "circuitboard_red":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "circuitboard_red.spd"
+            }
+        }
+    },
+    "columbium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "columbium.spd"
+            }
+        }
+    },
+    "engine_bell_exposed_metal":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "engine_bell_exposed_metal.spd"
+            }
+        }
+    },
+    "exposed_titanium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "exposed_titanium.spd"
+            }
+        }
+    },
+    "fibre_matting_engine_shroud":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "fibre_matting_engine_shroud.spd"
+            }
+        }
+    },
+    "gold_shimmer":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "gold_shimmer.spd"
+            }
+        }
+    },
+    "kapton_HN":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "kapton_HN.spd"
+            }
+        }
+    },
+    "kapton_MT":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "kapton_MT.spd"
+            }
+        }
+    },
+    "mli_nasa":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "mli_nasa.spd"
+            }
+        }
+    },
+    "white_paint":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "white_paint.spd"
+            }
+        }
+    },
+    "utj_solar_cells":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "utj_solar_cells.spd"
+            }
+        }
+    },
+    "gaas_ge_solar_cells":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "gaas_ge_solar_cells.spd"
+            }
+        }
+    },
+    "blue_aluminium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "blue_aluminium.spd"
+            }
+        }
+    },
+    "gold_aluminium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "gold_aluminium.spd"
+            }
+        }
+    },
+    "red_aluminium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "red_aluminium.spd"
+            }
+        }
+    },
+    "unpainted_aluminium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "unpainted_aluminium.spd"
+            }
+        }
+    },
+    "black_aluminium":{
+        "type": "twosided",
+        "material":{
+            "type": "diffuse",
+            "reflectance": {
+                "type": "spectrum",
+                "filename": "black_aluminium.spd"
+            }
+        }
     }
 }
