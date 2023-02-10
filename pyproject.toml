@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # Project Information
 name = "hysim" # Required
-version = "0.1.1"
+version = "0.1.2"
 description = "Hyperspectral Space-to-Space Imaging Simulator"
 requires-python = ">=3.9"
 authors = [
