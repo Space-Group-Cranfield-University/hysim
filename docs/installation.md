@@ -37,10 +37,10 @@ From here you can install HySim using the provided python wheel.
 
 ## Installing HySim
 
-HySim can be installed with pip using the wheel included in the project deliverables. Firstly navigate to the directory containing the wheel and install using:
+HySim can be installed with pip using the following github link:
 
 ```console
-pip install hysim.whl
+pip install git+https://github.com/Space-Group-Cranfield-University/hysim
 ```
 Note the name of the wheel here is just an example. It will change between versions and platforms. To test the installation run:
 
