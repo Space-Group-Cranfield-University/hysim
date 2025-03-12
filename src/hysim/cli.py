@@ -20,19 +20,20 @@ def return_unix_path_string(path):
     return str(path).replace("\\", "/")
 
 
-def run_case():
-    # TODO: Add support for relative case directory commands
+def run_case(run_directory: str):
+    case_directory = Path(run_directory)
 
-    # if run_directory is None:
-    #    run_directory = Path.cwd()
-    # else:
-    #    run_directory = Path.cwd() / Path(run_directory)
+    if case_directory.is_absolute() is False:
+        case_directory = Path.cwd() / case_directory
 
-    run_directory = Path.cwd()
+    if case_directory.exists() is False:
+        logging.error("Invalid path to case directory. Terminating Hysim")
+        exit()
+        
+    case_directory = return_unix_path_string(case_directory)
+    logging.info(f"Case Directory: {case_directory}") 
 
-    run_directory = return_unix_path_string(run_directory)
-
-    sim.run_sim(run_directory)
+    sim.run_sim(case_directory)
 
 
 # == CLI ARGUMENTS == #
@@ -50,6 +51,7 @@ parser.add_argument(
 run_command = subparsers.add_parser("run", help="Run simulator case")
 run_command.set_defaults(func=run_case)
 run_command.add_argument("--debug", action="store_true")
+run_command.add_argument("-C", "--case_directory", default=Path.cwd(), help="Path to case directory")
 
 create_json_command = subparsers.add_parser("create_json")
 
@@ -79,7 +81,7 @@ def main():
         level=logging_level
     )
 
-    args.func()
+    args.func(args.case_directory)
 
 
 if __name__ == "__main__":
