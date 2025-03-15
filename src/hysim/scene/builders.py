@@ -7,14 +7,11 @@ from hysim import input_data as in_data
 from hysim.scene import frame_transforms as frames
 
 # Data handling
-from hysim.data import spd_reader
-from hysim.data import data_handling as dh
+from hysim.data import spd_reader, data_handling as dh
 
 # Scene
-from hysim.scene import spectra
-from hysim.scene import simulator_environment as env
-from hysim.scene import chaser_satellite as chas
-from hysim.scene import target_satellite as targ
+from hysim.scene import spectra, sensors, environment as env
+from hysim.scene.environment import PartBuilder
 
 
 class SceneBuilder:
@@ -71,7 +68,7 @@ class SceneBuilder:
         Parameters
         ----------
         user_inputs : in_data.Configs
-            Object containing user input datat
+            Object containing user input data
         orbit_data : frames.MissionInputProcessor
             Orbit data converted from user inputs
         """
@@ -162,21 +159,21 @@ class SceneBuilder:
             raise ValueError("Imaging mode invalid")
 
         # Build film object
-        film = chas.SpectralFilm(
+        film = sensors.SpectralFilm(
             film_bands, **self.user_inputs.sensor_config["film"]
         )
 
         # Build camera object
-        camera = chas.PerspectiveCamera(
+        camera = sensors.PerspectiveCamera(
             **self.user_inputs.sensor_config["camera"]
         )
 
         # Combine into sensor object
-        sensor = chas.SpectralSensor(film, camera, self.sampler)
+        sensor = sensors.SpectralSensor(film, camera, self.sampler)
         sensor.build_dict()
 
         # --- Chaser Satellite --- #
-        self.chaser = chas.Chaser(sensor)
+        self.chaser = env.Chaser(sensor)
         self.chaser.position = self.orbit_data.chaser_position
         self.chaser.attitude = self.user_inputs.mission_config["chaser"][
             "attitude"
@@ -186,12 +183,12 @@ class SceneBuilder:
 
     def build_target(self):
         """Builds Target spacecraft dictionary describing object model"""
-        self.target = targ.Target()
+        self.target = env.Target()
         for part_name in self.user_inputs.parts_config["components"]:
             part_input = self.user_inputs.parts_config["components"][part_name]
 
             # Create Part:
-            part = targ.PartBuilder(part_name)
+            part = PartBuilder(part_name)
 
             # Assign part mesh:
             part.mesh_file = dh.get_user_data_path(part_input["file"])
@@ -224,3 +221,14 @@ class SceneBuilder:
         self.scene_dict.update(self.chaser.chaser_dict)
         self.scene_dict.update(self.sun.sun_dict)
         self.scene_dict.update(self.earth.earth_dict)
+
+    def build(self):
+        self.build_integrator()
+        self.build_sampler()
+        self.build_sun()
+        self.build_chaser()
+        self.build_target()
+        self.build_earth()
+        self.build_scene_dict()
+
+

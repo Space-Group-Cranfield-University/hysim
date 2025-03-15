@@ -20,7 +20,7 @@ from hysim.data import data_handling as dh
 
 # Simulator
 from hysim import output_data
-from hysim.scene import simulator_scene as sc
+from hysim.scene.builders import SceneBuilder
 from hysim.scene import frame_transforms as frames
 
 
@@ -124,14 +124,15 @@ def run_sim(run_directory):
     # Assemble Scene
     # ------------------------------- #
     logging.info("Building scene")
-    scene = sc.SceneBuilder(user_inputs, orbit_data)
-    scene.build_integrator()
-    scene.build_sampler()
-    scene.build_sun()
-    scene.build_chaser()
-    scene.build_target()
-    scene.build_earth()
-    scene.build_scene_dict()
+    scene = SceneBuilder(user_inputs, orbit_data)
+    scene.build()
+    # scene.build_integrator()
+    # scene.build_sampler()
+    # scene.build_sun()
+    # scene.build_chaser()
+    # scene.build_target()
+    # scene.build_earth()
+    # scene.build_scene_dict()
 
     def calculate_relative_distance(p1: list, p2: list):
         """Calculates relative distance between two points

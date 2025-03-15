@@ -1,12 +1,6 @@
-"""Chaser Module
-
-This module contains classes representing the chaser spacecraft and
-the hyperspectral sensor.
-"""
-import mitsuba as mi
-import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+
 from hysim.scene import spectra
 
 
@@ -206,85 +200,3 @@ class SpectralSensor:
         self.sensor_dict["sensor"] = self.camera.camera_dict
         self.sensor_dict["sensor"]["film"].update(self.film.film_dict)
         self.sensor_dict["sensor"].update(self.sampler)
-
-
-class Chaser:
-    """Represents Chaser spacecraft
-
-    Chaser spacecraft consists of a sensor, a defined position and
-    defined attitude.
-
-    Attributes
-    ----------
-    sensor : SpectralSensor
-        Spectral sensor object
-    position : list
-        Position coordinates [x, y, z] [m]
-    attitude : list
-        Attitude defined by euler angles in LVLH frame [x-axis, y-axis, z-axis]
-    chaser_dict : dict
-
-    Methods
-    -------
-    __return_mitsuba_transform
-        Returns mitsuba scalar transform
-    build_dict
-        Builds dict describing chaser
-    """
-
-    def __init__(self, sensor):
-        self.sensor = sensor
-        self.position = []
-        self.attitude = []
-        self.chaser_dict = {}
-
-    def set_lookat_attitude(self):
-        """Set attitude to lookat mode"""
-        self.attitude = "lookat"
-
-    def __return_mitsuba_transform(self):
-        """Return mitsuba ScalarTransform4f
-
-        Returns mitsuba transform using position and attitude
-        attributes.
-
-        Returns
-        -------
-        mi.ScalarTransform4f
-            Scalar transform to orient object in scene
-        """
-        return (
-            mi.ScalarTransform4f.translate(self.position)
-            .rotate(axis=[1, 0, 0], angle=np.rad2deg(self.attitude[0]))
-            .rotate(axis=[0, 1, 0], angle=np.rad2deg(self.attitude[1]))
-            .rotate(axis=[0, 0, 1], angle=np.rad2deg(self.attitude[2]))
-        )
-
-    def build_dict(self):
-        """Builds the dictionary describing chaser sensor and
-        location/attitude
-
-        Builds sensor dictionary and adds location of chaser to define
-        the chaser dict for loading into mitsuba. If the attitude is
-        defined is "lookat" then a lookat transform is used. This
-        calculates the required attitude to look at the target. Else
-        the attitude and position provided is applied by calculating a
-        transform (see _return_mitsuba_tranform).
-        """
-        self.sensor.build_dict()
-        self.chaser_dict.update(self.sensor.sensor_dict)
-
-        if self.attitude == "lookat":
-            self.chaser_dict["sensor"].update(
-                {
-                    "to_world": mi.ScalarTransform4f.look_at(
-                        origin=self.position,
-                        target=[0, 0, 0],
-                        up=[0, 0, -1],  # Assumed +z is nadir
-                    )
-                }
-            )
-        else:
-            self.chaser_dict["sensor"].update(
-                {"to_world": self.__return_mitsuba_transform()}
-            )
