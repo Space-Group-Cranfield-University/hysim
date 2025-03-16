@@ -3,61 +3,73 @@
 Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
+
+from typing import List, Any
+
 import numpy as np
+import numpy.typing as npt
 
 # from dataclasses import dataclass
 import spiceypy as spice
+from numpy import ndarray, dtype, floating
+from numpy._typing import _64Bit
+from strenum import StrEnum
+
+from hysim.configs.config import ConfigType
+from hysim.configs.mission_config import MissionConfig, Spacecraft
+
+# Types
+Vector = npt.NDArray[np.float64]
 
 # Constants
 MU_EARTH = 3.986004418e5
 
 
-def calculate_eccentric_anomaly(
-    eccentricity: float, true_anomaly: float
-) -> float:
-    """Calculates eccentric anomaly given eccentricity and true anomaly
-
-    Parameters
-    ----------
-    eccentricity : float
-        Eccentricity of an orbit [no units].
-    true_anomaly : float
-        True anomaly [rad]
-
-    Returns
-    -------
-    float
-        Eccentric anomaly of an orbit [rad]
-    """
-    return 2 * np.arctan(
-        np.sqrt((1 - eccentricity) / (1 + eccentricity))
-        * np.tan(true_anomaly / 2)
-    )
-
-
-def calculate_mean_anomaly(
-    eccentric_anomaly: float, eccentricity: float
-) -> float:
-    """Calculates mean anomaly of an orbit given eccentric anomaly
-    and eccentricity.
-
-    Parameters
-    ----------
-    eccentric_anomaly : float
-        Eccentric anomaly of the orbit [rad]
-    eccentricity : float
-        Eccentricity of the orbit [rad]
-
-    Returns
-    -------
-    float
-        Mean anomaly of the orbit [rad]
-    """
-    return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
-
+# def calculate_eccentric_anomaly(
+#     eccentricity: float, true_anomaly: float
+# ) -> float:
+#     """Calculates eccentric anomaly given eccentricity and true anomaly
+#
+#     Parameters
+#     ----------
+#     eccentricity : float
+#         Eccentricity of an orbit [no units].
+#     true_anomaly : float
+#         True anomaly [rad]
+#
+#     Returns
+#     -------
+#     float
+#         Eccentric anomaly of an orbit [rad]
+#     """
+#     return 2 * np.arctan(
+#         np.sqrt((1 - eccentricity) / (1 + eccentricity))
+#         * np.tan(true_anomaly / 2)
+#     )
+#
+#
+# def calculate_mean_anomaly(
+#     eccentric_anomaly: float, eccentricity: float
+# ) -> float:
+#     """Calculates mean anomaly of an orbit given eccentric anomaly
+#     and eccentricity.
+#
+#     Parameters
+#     ----------
+#     eccentric_anomaly : float
+#         Eccentric anomaly of the orbit [rad]
+#     eccentricity : float
+#         Eccentricity of the orbit [rad]
+#
+#     Returns
+#     -------
+#     float
+#         Mean anomaly of the orbit [rad]
+#     """
+#     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
 def calculate_perifocal_distance(
-    semi_major_axis: float, eccentricity: float
+        semi_major_axis: float, eccentricity: float
 ) -> list:
     """Calculates perifical distance of the orbit
 
@@ -76,7 +88,7 @@ def calculate_perifocal_distance(
     return semi_major_axis * np.abs(1 - eccentricity)
 
 
-def convert_kepler_to_state_vectors(elements: list, epoch: float) -> list:
+def convert_kepler_to_state_vectors(elements: list, epoch: float) -> Vector:
     """Performs calculations to convert keplerian elements to state
     in ECI.
 
@@ -116,7 +128,7 @@ def convert_kepler_to_state_vectors(elements: list, epoch: float) -> list:
             MU_EARTH,
         ],
         epoch,
-    )*1000
+    ) * 1000
 
 
 def check_for_null(tle_data: list) -> float:
@@ -137,7 +149,7 @@ def check_for_null(tle_data: list) -> float:
     return tle_data
 
 
-def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> list:
+def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> Vector:
     """Converts two line element set to state vectors in ECI
 
     Parameters
@@ -224,19 +236,126 @@ def compute_eci_to_lvlh_rotation_matrix(state):
     angular_momentum = np.cross(state[:3], state[3:])
 
     # Unit vectors of the co-moving frame
-    k = (state[:3]/np.linalg.norm(state[:3]))
-    j = -angular_momentum/np.linalg.norm(-angular_momentum)
+    k = (state[:3] / np.linalg.norm(state[:3]))
+    j = -angular_momentum / np.linalg.norm(-angular_momentum)
     i = np.cross(j, k)
 
     return np.array([i, j, k])
 
 
 def convert_eci_to_lvlh(state, transformation_matrix, origin):
-
     # Relative position
     Rr = origin - state[:3]
 
     return np.matmul(transformation_matrix, np.transpose(Rr))
+
+
+class LocationFormat(StrEnum):
+    STATE = "state"
+    KEPLERIAN = "kep"
+    TLE = "tle"
+
+
+# class EnvironmentObject(StrEnum):
+#     EARTH = "earth"
+#     SUN = "sun"
+#     TARGET = "target"
+#     CHASER = "chaser"
+
+
+class StateVectors:
+    earth: Vector = np.zeros(6, dtype=np.float64)
+    sun: Vector
+    target: Vector
+    chaser: Vector
+
+    def __init__(self, mission_config: MissionConfig, epoch: float):
+        self._epoch = epoch
+        self.chaser = self._convert_input(mission_config.chaser)
+        self.target = self._convert_input(mission_config.target)
+        self.sun = self._get_sun_location()
+
+    def _convert_input(self, spacecraft: Spacecraft) -> Vector:
+        """Converts orbit defined in mission configs file to
+        orbit state vectors
+
+        Parameters
+        ----------
+        scene_object : str
+            String stating object to be converted
+
+        Returns
+        -------
+        list
+            Orbit state vectors
+        """
+        if spacecraft.position_frame == LocationFormat.STATE:
+            return np.array(spacecraft.position)
+        elif spacecraft.position_frame == LocationFormat.KEPLERIAN:
+            return convert_kepler_to_state_vectors(spacecraft.position, self._epoch)
+        elif spacecraft.position_frame == LocationFormat.TLE:
+            return convert_tle_to_state_vectors(spacecraft.position, self._epoch)
+        else:
+            raise ValueError("Invalid location format in " + ConfigType.MISSION +
+                             "\n Got: " + spacecraft.position_frame +
+                             "Expected one of: " + str([e.value for e in LocationFormat]))
+
+    def _get_sun_location(self) -> Vector:
+        """Get location of sun with respect to Earth at epoch
+
+        Returns
+        -------
+        list
+            Sun state vector
+        """
+        # Earth ID = 399
+        # Sun ID = 10
+
+        [sun_location, _] = spice.spkez(
+            10, self._epoch, "J2000", "NONE", 399
+        )
+        return sun_location * 1000
+
+
+class ScenePositionData:
+    def __init__(self, mission_config: MissionConfig, kernel_paths: List[str]):
+        spice.furnsh(kernel_paths)
+        self._epoch = spice.str2et(mission_config.datetime)
+
+        self._state_vectors = StateVectors(mission_config, self._epoch)
+        self._local_frame_transform = compute_eci_to_lvlh_rotation_matrix(self._state_vectors.target)
+
+        self._target_position = self._convert_eci_to_lvlh(self._state_vectors.target)
+
+        self._chaser_position = self._convert_eci_to_lvlh(self._state_vectors.chaser)
+
+        self._earth_position = self._convert_eci_to_lvlh(self._state_vectors.earth)
+
+        sun_position = self._convert_eci_to_lvlh(self._state_vectors.sun)
+        self._sun_direction_vector = -sun_position / np.linalg.norm(sun_position)
+
+    def _convert_eci_to_lvlh(self, state_vector: Vector) -> Vector:
+        return convert_eci_to_lvlh(
+            state_vector,
+            self._local_frame_transform,
+            self._state_vectors.target[:3]
+        )
+
+    @property
+    def target_position(self) -> Vector:
+        return self._target_position
+
+    @property
+    def chaser_position(self) -> Vector:
+        return self._chaser_position
+
+    @property
+    def earth_position(self)-> Vector:
+        return self._earth_position
+
+    @property
+    def sun_direction_vector(self) -> Vector:
+        return self._sun_direction_vector
 
 
 class MissionInputProcessor:
@@ -333,7 +452,7 @@ class MissionInputProcessor:
         [sun_location, _] = spice.spkez(
             10, self.epoch, "J2000", "NONE", 399
         )
-        return sun_location*1000
+        return sun_location * 1000
 
     def load_state_vectors(self, location_vector: list, _) -> np.array:
         """Returns location state vector
