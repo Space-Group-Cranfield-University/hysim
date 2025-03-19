@@ -1,0 +1,33 @@
+from hysim.mitsuba.abc import *
+from hysim.mitsuba.spectra import Spectrum
+
+
+class Film(MitsubaObject):
+    """Abstract base class for Mitsuba Film objects"""
+    width: int = 768
+    height: int = 576
+    component_format: str = "float32"
+
+    @property
+    @abstractmethod
+    def asdict(self) -> MDict:
+        return {
+            "type": None,
+            "width": self.width,
+            "height": self.height,
+            "component_format": self.component_format,
+        }
+
+
+class  SpectralFilm(Film):
+    spectra: List[Spectrum]
+
+    def asdict(self) -> MDict:
+        d = super().asdict
+        d["type"] = "specfilm"
+        for i, spectrum in enumerate(self.spectra):
+            if spectrum.name:
+                d[spectrum.name] = spectrum.asdict
+            else:
+                d[f"band_{i}"] = spectrum.asdict
+        return d
