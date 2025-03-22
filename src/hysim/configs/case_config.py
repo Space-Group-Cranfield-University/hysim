@@ -6,26 +6,26 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
-
-class Sampler(BaseModel):
+@dataclass(frozen=True)
+class Sampler:
     type: str
     sample_count: int
 
-
-class Integrator(BaseModel):
+@dataclass(frozen=True)
+class Integrator:
     type: str
     max_depth: int
 
-
-class OutputItem(BaseModel):
+@dataclass(frozen=True)
+class OutputItem:
     format: str
     file_name: str
     reference_wavelengths: Optional[List[int]] = None
 
-
-class CaseConfig(BaseModel):
+@dataclass(frozen=True)
+class CaseConfig:
     file_type: str
     mitsuba_variant: str
     sampler: Sampler

@@ -4,22 +4,29 @@
 
 from __future__ import annotations
 
-from typing import List, Union
+from typing import List, Union, Literal
 
-from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
-class Spacecraft(BaseModel):
+@dataclass(frozen=True)
+class Spacecraft:
     position_frame: str
     position: List[str]
-    attitude: Union[List[float], str]
+    attitude: Union[List[float], Literal["lookat"]]
 
 # class TargetSpacecraft(Spacecraft):
 #     pass
-# class ChaserSpacecraft(Spacecraft):
-#     pass
 
-class MissionConfig(BaseModel):
+@dataclass(frozen=True)
+class ChaserSpacecraft(Spacecraft):
+    @property
+    def is_lookat(self) -> bool:
+        return self.attitude == "lookat"
+
+
+@dataclass(frozen=True)
+class MissionConfig:
     file_type: str
     datetime: str
     target: Spacecraft
-    chaser: Spacecraft
+    chaser: ChaserSpacecraft
