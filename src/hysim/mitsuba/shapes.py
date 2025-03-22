@@ -2,9 +2,10 @@ from hysim.mitsuba.abc import *
 from hysim.mitsuba.bsdfs import BSDF
 
 
-class Shape(ABC, NamedMitsubaObject):
+class Shape(NamedMitsubaObject):
     to_world: Transform
     pass
+
 
 class PlyMesh(Shape):
     filename: str
@@ -19,5 +20,5 @@ class PlyMesh(Shape):
             "type": "ply",
             "filename": self.filename,
             "to_world": self.to_world,
-            "material": self.material.asdict
+            "material": self.material.asdict,
         }

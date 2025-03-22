@@ -1,5 +1,6 @@
+import typing_extensions
 from abc import ABC, abstractmethod
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict, Optional, Union, Annotated
 import mitsuba as mi
 
 # Type aliases
@@ -11,6 +12,7 @@ else:
     Vector = mi.Vector3f
 
 MDict = Dict[str, Any]
+
 
 class MitsubaObject(ABC):
     """Abstract base class for Mitsuba objects"""
@@ -25,12 +27,14 @@ class MitsubaObject(ABC):
 
 
 class NamedMitsubaObject(MitsubaObject):
-    name: Optional[str]
+    name: Optional[str] = None
 
-    # @property
-    # @abstractmethod
-    # def asdict(self) -> MDict:
-    #     pass
+
+def create_type_alias(cls: type) -> typing_extensions.TypeAlias:
+    return Annotated[
+        Union[tuple(cls.__subclasses__())], "Type alias for " + cls.__name__ + "s"
+    ]
+
 
 # class IPositionedMitsubaObject():
 #     to_world: mi.ScalarTransform4f
@@ -49,4 +53,3 @@ class NamedMitsubaObject(MitsubaObject):
 # sensor.type = "perspective"
 # sensor.fov = 45
 # sensor.film = Film()
-
