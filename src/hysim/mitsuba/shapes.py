@@ -16,9 +16,13 @@ class PlyMesh(Shape):
 
     @property
     def asdict(self) -> MDict:
-        return {
+        d = {
             "type": "ply",
             "filename": self.filename,
             "to_world": self.to_world,
-            "material": self.material.asdict,
         }
+        if self.material.name:
+            d[self.material.name] = self.material.asdict
+        else:
+            d["material"] = self.material.asdict
+        return d

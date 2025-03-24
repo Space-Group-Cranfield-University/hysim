@@ -17,3 +17,5 @@ class PathTracer(Integrator):
             "rr_depth": self.rr_depth,
             "hide_emitters": self.hide_emitters
         }
+
+# Integrators = Union[PathTracer]

@@ -5,13 +5,13 @@ class Emitter(NamedMitsubaObject):
     pass
 
 class DirectionalEmitter(Emitter):
-    to_world: Transform
+    to_world: Transform = None
     # Setting direction forces it to be used over to_world.
-    direction: Vector
+    direction: Vector = None
     irradiance: Spectrum
     @property
     def asdict(self) -> MDict:
-        if self.direction:
+        if self.direction is not None:
             return {
                 "type": "directional",
                 "radiance": self.irradiance.asdict,

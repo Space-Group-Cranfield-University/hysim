@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from hysim.mitsuba.abc import *
 from pydantic.dataclasses import dataclass
 
@@ -9,16 +11,23 @@ class Spectrum(NamedMitsubaObject):
 
 @dataclass
 class IrregularSpectrum(Spectrum):
-    wavelengths: str
-    values: str
+    wavelengths: Iterable[float]
+    values: Iterable[float]
 
     @property
     def asdict(self) -> MDict:
         return {
             "type": "irregular",
-            "wavelengths": self.wavelengths,
-            "values": self.values,
+            "wavelengths": self._iterable_to_string(self.wavelengths),
+            "values": self._iterable_to_string(self.values),
         }
+
+    @staticmethod
+    def _iterable_to_string(values: Iterable[float]) -> str:
+        """Used to match mitsuba format.
+        See https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_spectra.html#irregular-spectrum-irregular
+        """
+        return ", ".join(map(str, values))
 
 
 @dataclass
@@ -27,7 +36,10 @@ class SpdSpectrum(Spectrum):
 
     @property
     def asdict(self) -> MDict:
-        return {"type": "spectrum", "filename": self.filename}
+        return {
+            "type": "spectrum",
+            "filename": self.filename,
+        }
 
 
 Spectra = Union[IrregularSpectrum, SpdSpectrum]  # create_type_alias(Spectrum)

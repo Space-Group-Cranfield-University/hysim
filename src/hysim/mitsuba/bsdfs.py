@@ -1,5 +1,7 @@
-"""BSDFs or Materials adapted from:
+"""BSDFs (materials) adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#"""
+from typing import TypeVar
+
 from hysim.mitsuba.abc import *
 from hysim.mitsuba.spectra import Spectra
 from pydantic.dataclasses import dataclass
@@ -41,16 +43,15 @@ class RoughConductorMaterial(BSDF):
 
 @dataclass
 class TwoSidedBRDF(BSDF):
-    bsdf: BSDF
+    material: Union[DiffuseMaterial, RoughConductorMaterial]
 
     @property
     def asdict(self) -> MDict:
         return {
             "type": "twosided",
-            "material": self.bsdf.asdict,
+            "material": self.material.asdict,
         }
 
 
-BSDFs = Union[DiffuseMaterial, RoughConductorMaterial, TwoSidedBRDF] # create_type_alias(BSDF)
-
-print(BSDFs)
+# BSDFs = TypeVar("BSDFs", bound=get_subclasses(BSDF), covariant=True)
+BSDFs = Union[DiffuseMaterial, RoughConductorMaterial, TwoSidedBRDF]

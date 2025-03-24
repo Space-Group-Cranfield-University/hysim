@@ -1,4 +1,5 @@
 from hysim.mitsuba.abc import *
+from hysim.mitsuba.abc import _iterate_named_objects
 from hysim.mitsuba.spectra import Spectrum
 
 
@@ -25,9 +26,5 @@ class  SpectralFilm(Film):
     def asdict(self) -> MDict:
         d = super().asdict
         d["type"] = "specfilm"
-        for i, spectrum in enumerate(self.spectra):
-            if spectrum.name:
-                d[spectrum.name] = spectrum.asdict
-            else:
-                d[f"band_{i}"] = spectrum.asdict
+        _iterate_named_objects(d, self.spectra, "band")
         return d

@@ -4,7 +4,7 @@ from hysim.mitsuba.films import Film
 from hysim.mitsuba.samplers import Sampler
 
 
-class Sensor(MitsubaObject):
+class Sensor(NamedMitsubaObject):
     near_clip: float = 0.01
     far_clip: float = 1e20
     to_world: Transform
