@@ -8,6 +8,9 @@ from typing import List, Optional
 
 from pydantic.dataclasses import dataclass
 
+from hysim.configs.constants import ConfigType
+
+
 @dataclass(frozen=True)
 class Sampler:
     type: str
@@ -26,7 +29,7 @@ class OutputItem:
 
 @dataclass(frozen=True)
 class CaseConfig:
-    file_type: str
+    file_type: ConfigType
     mitsuba_variant: str
     sampler: Sampler
     integrator: Integrator

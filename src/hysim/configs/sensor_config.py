@@ -1,6 +1,9 @@
 from __future__ import annotations
 from pydantic.dataclasses import dataclass
 
+from hysim.configs.constants import ConfigType, ImagingMode
+
+
 @dataclass(frozen=True)
 class Camera:
     field_of_view: float
@@ -15,10 +18,8 @@ class Film:
 
 @dataclass(frozen=True)
 class SensorConfig:
-    file_type: str
+    file_type: ConfigType
     camera: Camera
     film: Film
-    imaging_mode: str
+    imaging_mode: ImagingMode
     spectrum_file: str
-    # def __post_init__(self):
-    #     self.file_type = ConfigType(self.file_type)

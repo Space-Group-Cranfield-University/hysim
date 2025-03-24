@@ -7,3 +7,21 @@ class ConfigType(StrEnum):
     SENSOR = "sensor_config"
     PARTS = "parts_config"
     MATERIAL = "material_config"
+
+
+# class MitsubaVariants(StrEnum): load from mitsuba.variants()
+
+# class SamplerType(StrEnum): load from hysim.mitsuba.samplers etc
+
+class ImagingMode(StrEnum):
+    """ A spectrum of film sensitivity (quantum efficiency)"""
+    HYPERSPECTRAL = "hyperspectral"
+    """ Represents a single narrow band for each wavelength. Each wavelength has a 
+    single response value. The total number of bands is determined by the number of 
+    data points.
+    """
+    MULTISPECTRAL = "multispectral"
+    """ Represents a single narrow band for each wavelength.  Each band contains 
+    spectral response over a wide range of wavelengths. The total number of bands is 
+    determined by the number of band response columns provided by the data file.
+    """

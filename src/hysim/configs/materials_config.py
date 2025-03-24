@@ -17,9 +17,9 @@ class MaterialWrapper:
 
 
 class MaterialsConfig:
-    file_type: ConfigType.MISSION
+    file_type: ConfigType
     materials : Dict[str, BSDFs]
 
-    def __init__(self, file_type: str):
+    def __init__(self, file_type: ConfigType):
         self.file_type = file_type
         self.materials = {}
