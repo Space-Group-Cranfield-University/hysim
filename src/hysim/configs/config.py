@@ -1,7 +1,6 @@
 import os
-from typing import Dict, Literal
+from typing import Dict, Literal, Set
 
-from pydantic import TypeAdapter
 from rickle import BaseRickle
 
 from hysim.configs.case_config import CaseConfig
@@ -19,43 +18,67 @@ class Config:
     _sensor_config: SensorConfig
     _part_config: PartsConfig
     _materials_config: MaterialsConfig
+
     _case_directory: str
+    _directories: Set[str] = set()
+    _sensor_spectrum_path: str
+    # This attribute is only needed for the sensor spectrum file, as it is the only case
+    # file read by hysim and not mitsuba
+
 
     def __init__(self, case_directory: str) -> None:
-        self._file_type: Literal["file_type"] = "file_type"
+        self._file_type_ltr: Literal["file_type"] = "file_type"
         self._case_directory = case_directory
+        _case_files: Dict[str, str] = {}
         for root, _, files in os.walk(self._case_directory):
             for file in files:
                 if file.endswith(".yml"):
-                    path = os.path.join(root, file)  # TODO: replace with pathlib
+                    path = os.path.join(root, file).replace("\\", "/")
                     self._init_configs(path)
+                elif file.endswith((".spd", ".ply")):
+                    _case_files[file] = os.path.join(root, file).replace("\\", "/")
+                    self._directories.add(root)
+        self._sensor_spectrum_path = _case_files[self._sensor_config.spectrum_file]
+
 
     def _init_configs(self, path: str) -> None:
-        # Make this a dictionary instead
         rickle = BaseRickle(path)
-        if rickle[self._file_type] == ConfigType.CASE:
+        file_type = rickle[self._file_type_ltr]
+        if file_type == ConfigType.CASE:
             self._case_config = CaseConfig(**rickle.dict())
-        elif rickle[self._file_type] == ConfigType.MISSION:
+
+        elif file_type == ConfigType.MISSION:
             self._mission_config = MissionConfig(**rickle.dict())
-        elif rickle[self._file_type] == ConfigType.SENSOR:
+
+        elif file_type == ConfigType.SENSOR:
             self._sensor_config = SensorConfig(**rickle.dict())
-        elif rickle[self._file_type] == ConfigType.PARTS:
+
+        elif file_type == ConfigType.PARTS:
             self._part_config = PartsConfig(ConfigType.PARTS)
             for part_name, part_dict in rickle.dict()["components"].items():
                 self._part_config.parts[part_name] = Part(**part_dict)
-        elif rickle[self._file_type] == ConfigType.MATERIAL:
+
+        elif file_type == ConfigType.MATERIAL:
             self._materials_config = MaterialsConfig(ConfigType.MATERIAL)
             for material_name, material_dict in rickle.dict()["materials"].items():
                 self._materials_config.materials[material_name] = MaterialWrapper(
                     **material_dict
                 ).material
-            # a = TypeAdapter(MaterialWrapper).validate_python(rickle.dict()["materials"]["aluminized_mli"])
         else:
-            raise ValueError(f"{rickle[self._file_type]} is an invalid config type.")
+            raise ValueError(f"{file_type} is an invalid config type at {path}")
 
     @property
     def case_directory(self) -> str:
         return self._case_directory
+
+    @property
+    def sensor_spectrum_path(self) -> str:
+        return self._sensor_spectrum_path
+
+    @property
+    def directories(self) -> Set[str]:
+        """A set of directories in the user specified case directory that are to be added to the mitsuba search path"""
+        return self._directories
 
     @property
     def case(self) -> CaseConfig:
