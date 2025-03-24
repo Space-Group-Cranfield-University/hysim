@@ -3,12 +3,21 @@
 Contains Database Enums to define data paths and functions to
 handle data retrieval.
 """
+import functools
 import os
 from importlib import resources
 from enum import Enum
+
+import numpy as np
+from strenum import StrEnum
 from pathlib import Path
 
 import json
+
+from hysim.configs.constants import ImagingMode
+from hysim.data import spd_reader as spdr
+from hysim.mitsuba.bsdfs import TwoSidedBRDF
+from hysim.mitsuba.spectra import IrregularSpectrum
 
 
 # ===== IO Error Handling ===== #
@@ -29,7 +38,7 @@ class Kernels(Enum):
     KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls"]
 
 
-class MaterialsData(Enum):
+class MaterialsData(StrEnum):
     """Enum with path and file name of materials database"""
     PATH = "hysim.data.materials"
     MATERIALS_FILE = "materials.json"
@@ -41,13 +50,13 @@ class SensorsData(Enum):
     SENSORS_FILE = "sensors.json"
 
 
-class LightSourceData(Enum):
+class LightSourceData(StrEnum):
     """Enum with path and file names of light sources"""
     PATH = "hysim.data.light_sources"
     SUNLIGHT_SPECTRUM = "wehrli85.spd"
 
 
-class EarthData(Enum):
+class EarthData(StrEnum):
     """Enum of path and file names of Earth data"""
     PATH = "hysim.data.earth_model"
     SOIL_SPECTRUM = "soil.spd"
@@ -72,6 +81,8 @@ def get_user_data_path(filename):
     str
         Path to file
     """
+
+    # TODO: this should be case directory relative
     for root, _, files in os.walk(Path.cwd()):
         for file in files:
             if file == filename:
@@ -115,6 +126,23 @@ def read_json_package_data(path, file):
         with open(path_data, "r", encoding="utf-8") as j:
             return json.loads(j.read())
 
+@functools.cache
+def load_material_database() -> dict[str, TwoSidedBRDF]:
+    materials = read_json_package_data(
+        MaterialsData.PATH, MaterialsData.MATERIALS_FILE
+    )
+    for material_name, material_dict in materials.items():
+        mat = TwoSidedBRDF(**material_dict)
+        mat.material.reflectance.filename = get_data_path(
+            MaterialsData.PATH, mat.material.reflectance.filename
+        )
+        materials[material_name] = mat
+    return materials
+
+
+def get_database_material(material_name: str):
+    """Retrieves material dictionary from database"""
+    return load_material_database()[material_name]
 
 def get_material_from_database(material_name):
     """Retrieves material dictionary from database
@@ -142,7 +170,7 @@ def get_material_from_database(material_name):
     return material_dict
 
 
-def get_data_path(directory, file):
+def get_data_path(directory: str, file: str):
     """Get unix style path of data
 
     Parameters
@@ -161,18 +189,27 @@ def get_data_path(directory, file):
         return str(path).replace("\\", "/")
 
 
-def get_sunlight_spectrum():
-    """Get path to sunlight spectrum data
+def get_earth_mesh_path() -> str:
+    return get_data_path(EarthData.PATH,EarthData.MESH)
 
-    Returns
-    -------
-    str
-        Path to sunlight data
-    """
-    return get_data_path(
-        LightSourceData.PATH.value, LightSourceData.SUNLIGHT_SPECTRUM.value
-    )
+def get_ocean_spectrum_path() -> str:
+    return get_data_path(EarthData.PATH,EarthData.OCEAN_SPECTRUM)
 
+def get_sun_spectrum_path() -> str:
+    return get_data_path(LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM)
+
+# def get_sunlight_spectrum():
+#     """Get path to sunlight spectrum data
+#
+#     Returns
+#     -------
+#     str
+#         Path to sunlight data
+#     """
+#     return get_data_path(
+#         LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM
+#     )
+#
 
 def list_defined_materials():
     """Returns list of materials inside material database
@@ -202,3 +239,31 @@ def list_defined_light_sources():
         When called
     """
     raise NotImplementedError()
+
+
+def spectrum_from_path(path: str, imaging_mode: ImagingMode) -> list[IrregularSpectrum]:
+    spectrum_data = spdr.SPDReader(path)
+    bands = []
+    sensitivities = spectrum_data.values
+    wavelengths = spectrum_data.wavelengths
+
+    if imaging_mode == ImagingMode.MULTISPECTRAL:
+        # NOTE: might need to refactored to properly handle single column case
+        if np.ndim(sensitivities) == 1:
+            sensitivities = np.expand_dims(sensitivities, axis=1)
+        for i, band_data in enumerate(sensitivities.T):
+            bands.append(IrregularSpectrum(wavelengths, band_data))
+
+    elif imaging_mode == ImagingMode.HYPERSPECTRAL:
+        if sensitivities.ndim != 1:
+            raise TypeError("Too many columns for hyperspectral data")
+        for i, _ in enumerate(wavelengths[1:], start=1):
+            band = IrregularSpectrum(
+                wavelengths[i - 1:i + 1],
+                sensitivities[i - 1:i + 1]
+            )
+            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}"
+            bands.append(band)
+    else:
+        raise ValueError("Imaging mode invalid")
+    return bands

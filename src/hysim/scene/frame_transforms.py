@@ -4,22 +4,31 @@ Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
 
-from typing import List, Any
+from typing import List, Union
 
 import numpy as np
 import numpy.typing as npt
 
-# from dataclasses import dataclass
 import spiceypy as spice
-from numpy import ndarray, dtype, floating
-from numpy._typing import _64Bit
+
 from strenum import StrEnum
 
-from hysim.configs.config import ConfigType
+from hysim.configs.constants import ConfigType
 from hysim.configs.mission_config import MissionConfig, Spacecraft
+import mitsuba as mi
+
+
 
 # Types
 Vector = npt.NDArray[np.float64]
+# TODO This is needed because you cannot type hint a function with a mitsuba type before
+# the variant has been set. (Alternative is to import this module midway through a function)
+if mi.variant() is None:
+    MVector = List[float]
+    MTransform = List[List[float]]
+else:
+    MVector = mi.Vector3f
+    MTransform = mi.ScalarTransform4f
 
 # Constants
 MU_EARTH = 3.986004418e5
@@ -68,9 +77,8 @@ MU_EARTH = 3.986004418e5
 #     """
 #     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
-def calculate_perifocal_distance(
-        semi_major_axis: float, eccentricity: float
-) -> list:
+
+def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> list:
     """Calculates perifical distance of the orbit
 
     Parameters
@@ -119,16 +127,19 @@ def convert_kepler_to_state_vectors(elements: list, epoch: float) -> Vector:
     # TODO: Confirm prefered input, comment this out to swap to true anomaly
     mean_anomaly = elements[5]
 
-    return spice.conics(
-        [
-            perifocal_distance,
-            *elements[1:5],
-            mean_anomaly,
+    return (
+        spice.conics(
+            [
+                perifocal_distance,
+                *elements[1:5],
+                mean_anomaly,
+                epoch,
+                MU_EARTH,
+            ],
             epoch,
-            MU_EARTH,
-        ],
-        epoch,
-    ) * 1000
+        )
+        * 1000
+    )
 
 
 def check_for_null(tle_data: list) -> float:
@@ -168,8 +179,7 @@ def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> Vector:
     [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_data)
     geoph_data_list = ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
     geophs = [
-        float(spice.bodvrd("EARTH", geoph_data, 1)[1])
-        for geoph_data in geoph_data_list
+        float(spice.bodvrd("EARTH", geoph_data, 1)[1]) for geoph_data in geoph_data_list
     ]
     return spice.evsgp4(epoch, geophs, tle_elements) * 1000
 
@@ -236,7 +246,7 @@ def compute_eci_to_lvlh_rotation_matrix(state):
     angular_momentum = np.cross(state[:3], state[3:])
 
     # Unit vectors of the co-moving frame
-    k = (state[:3] / np.linalg.norm(state[:3]))
+    k = state[:3] / np.linalg.norm(state[:3])
     j = -angular_momentum / np.linalg.norm(-angular_momentum)
     i = np.cross(j, k)
 
@@ -296,9 +306,14 @@ class StateVectors:
         elif spacecraft.position_frame == LocationFormat.TLE:
             return convert_tle_to_state_vectors(spacecraft.position, self._epoch)
         else:
-            raise ValueError("Invalid location format in " + ConfigType.MISSION +
-                             "\n Got: " + spacecraft.position_frame +
-                             "Expected one of: " + str([e.value for e in LocationFormat]))
+            raise ValueError(
+                "Invalid location format in "
+                + ConfigType.MISSION
+                + "\n Got: "
+                + spacecraft.position_frame
+                + "Expected one of: "
+                + str([e.value for e in LocationFormat])
+            )
 
     def _get_sun_location(self) -> Vector:
         """Get location of sun with respect to Earth at epoch
@@ -311,24 +326,24 @@ class StateVectors:
         # Earth ID = 399
         # Sun ID = 10
 
-        [sun_location, _] = spice.spkez(
-            10, self._epoch, "J2000", "NONE", 399
-        )
+        [sun_location, _] = spice.spkez(10, self._epoch, "J2000", "NONE", 399)
         return sun_location * 1000
 
 
 class ScenePositionData:
     def __init__(self, mission_config: MissionConfig, kernel_paths: List[str]):
         spice.furnsh(kernel_paths)
-        self._epoch = spice.str2et(mission_config.datetime)
+        self.mission_config = mission_config
+        self._epoch = spice.str2et(self.mission_config.datetime)
 
         self._state_vectors = StateVectors(mission_config, self._epoch)
-        self._local_frame_transform = compute_eci_to_lvlh_rotation_matrix(self._state_vectors.target)
+
+        self._local_frame_transform = compute_eci_to_lvlh_rotation_matrix(
+            self._state_vectors.target
+        )
 
         self._target_position = self._convert_eci_to_lvlh(self._state_vectors.target)
-
         self._chaser_position = self._convert_eci_to_lvlh(self._state_vectors.chaser)
-
         self._earth_position = self._convert_eci_to_lvlh(self._state_vectors.earth)
 
         sun_position = self._convert_eci_to_lvlh(self._state_vectors.sun)
@@ -336,26 +351,80 @@ class ScenePositionData:
 
     def _convert_eci_to_lvlh(self, state_vector: Vector) -> Vector:
         return convert_eci_to_lvlh(
-            state_vector,
-            self._local_frame_transform,
-            self._state_vectors.target[:3]
+            state_vector, self._local_frame_transform, self._state_vectors.target[:3]
         )
 
-    @property
-    def target_position(self) -> Vector:
-        return self._target_position
+    # @property
+    # def earth_position(self) -> Vector:
+    #     return self._earth_position
 
     @property
     def chaser_position(self) -> Vector:
         return self._chaser_position
 
     @property
-    def earth_position(self)-> Vector:
-        return self._earth_position
+    def sun_direction_vector(self) -> MVector:
+        return mi.Vector3f(self._sun_direction_vector)
+
+    @classmethod
+    def _get_spacecraft_transform(cls,
+                                 position: Vector,
+                                 attitude: list[float]) -> MTransform:
+        return (
+            mi.ScalarTransform4f()
+            .translate(position)
+            .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
+            .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
+            .rotate(axis=[0, 0, 1], angle=np.rad2deg(attitude[2]))
+        )
 
     @property
-    def sun_direction_vector(self) -> Vector:
-        return self._sun_direction_vector
+    def earth_transform(self) -> MTransform:
+        return mi.ScalarTransform4f().translate(self._earth_position)
+
+    @property
+    def target_transform(self) -> MTransform:
+        return self._get_spacecraft_transform(
+            self._target_position, self.mission_config.target.attitude
+        )
+
+    @property
+    def chaser_transform(self) -> MTransform:
+        if self.mission_config.chaser.is_lookat:
+            return mi.ScalarTransform4f().look_at(
+                origin=self._chaser_position,
+                target=[0, 0, 0],
+                up=[0, 0, -1],  # Assumed +z is nadir
+            )
+        else:
+            return self._get_spacecraft_transform(
+                self._chaser_position, self.mission_config.chaser.attitude
+            )
+
+    @property
+    def relative_distance(self) -> float:
+        """Calculates relative distance between two points
+
+        Calculates distance between two points in a 3d
+        cartesian coordinate system.
+
+        Parameters
+        ----------
+        p1 : list
+            First set of coordinates in 3 dimensions [x,y,z]
+        p2 : list
+            Second set of coordinates in 3 dimensions [x,y,z]
+
+        Returns
+        -------
+        float
+            Distance between two points
+        """
+        p1 = self._chaser_position
+        p2 = self._target_position
+        return (
+                (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
+        ) ** 0.5
 
 
 class MissionInputProcessor:
@@ -449,9 +518,7 @@ class MissionInputProcessor:
         # Earth ID = 399
         # Sun ID = 10
 
-        [sun_location, _] = spice.spkez(
-            10, self.epoch, "J2000", "NONE", 399
-        )
+        [sun_location, _] = spice.spkez(10, self.epoch, "J2000", "NONE", 399)
         return sun_location * 1000
 
     def load_state_vectors(self, location_vector: list, _) -> np.array:
