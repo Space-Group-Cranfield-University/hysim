@@ -254,7 +254,7 @@ class OutputFormatter:
 
 
 class OutputHandler2:
-    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config):
+    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): TODO:
     def __init__(self, render_data, scene_builder:SceneBuilder,  config: Config):
         self.render_data = render_data
         self.config = config
@@ -351,11 +351,10 @@ class OutputHandler2:
         self._create_output_directory(png_dir, OutputFormat.PNG)
 
         for i in range(len(self.render_data[0, 0, :])):
-            dir_name = self._join_path(png_dir, output_item.file_name)
             band_name = f"Band_{i}.png"
             results_array = np.array(self.render_data[:, :, i])
             iio.imwrite(
-                f"{dir_name}/{band_name}",
+                f"{png_dir}/{band_name}",
                 # np.interp(
                 #      results_array,
                 #      (results_array.min(), results_array.max()),
@@ -372,11 +371,10 @@ class OutputHandler2:
         self._create_output_directory(csv_dir, OutputFormat.CSV)
 
         for i in range(len(self.render_data[0, 0, :])):
-            dir_name = self._join_path(csv_dir, output_item.file_name)
             band_name = f"Band_{i}.csv"
             results_array = np.array(self.render_data[:, :, i])
             np.savetxt(
-                f"{dir_name}/{band_name}", results_array, delimiter=","
+                f"{csv_dir}/{band_name}", results_array, delimiter=","
             )
 
     def export_data(self):

@@ -23,6 +23,7 @@ class Film(MitsubaObject):
 class  SpectralFilm(Film):
     spectra: List[Spectrum]
 
+    @property
     def asdict(self) -> MDict:
         d = super().asdict
         d["type"] = "specfilm"

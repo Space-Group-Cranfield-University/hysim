@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from hysim.mitsuba.abc import *
 from pydantic.dataclasses import dataclass
 
@@ -11,8 +9,8 @@ class Spectrum(NamedMitsubaObject):
 
 @dataclass
 class IrregularSpectrum(Spectrum):
-    wavelengths: Iterable[float]
-    values: Iterable[float]
+    wavelengths: list[float]
+    values: list[float]
 
     @property
     def asdict(self) -> MDict:

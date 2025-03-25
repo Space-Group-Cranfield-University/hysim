@@ -197,12 +197,13 @@ def run_sim2(run_directory:str):
     scene_builder = sb.SceneBuilder(config, position_data)
     logging.debug(f"Chaser ECI Coordinates: {position_data.chaser_position}")
     logging.info("Relative distance to target: %0.2fm", position_data.relative_distance)
-    logging.debug(scene_builder.scene.asdict)
+    scene_dict = scene_builder.scene.asdict
+    logging.debug(scene_dict)
     logging.info("Adding case directory search paths to mitsuba")
     fr = mi.Thread.thread().file_resolver()
     for path in config.directories:
         fr.append(path)
-    sim2 = mi.load_dict(scene_builder.scene.asdict)
+    sim2 = mi.load_dict(scene_dict)
     render = mi.render(sim2)
     output = output_data.OutputHandler2(render, scene_builder, config)
     output.export_data()

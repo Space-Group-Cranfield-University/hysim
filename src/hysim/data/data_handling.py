@@ -251,8 +251,6 @@ def spectrum_from_path(path: str, imaging_mode: ImagingMode) -> list[IrregularSp
         # NOTE: might need to refactored to properly handle single column case
         if np.ndim(sensitivities) == 1:
             sensitivities = np.expand_dims(sensitivities, axis=1)
-        # for i, band_data in enumerate(sensitivities.T):
-        #     bands.append(IrregularSpectrum(wavelengths, band_data))
         bands = [IrregularSpectrum(wavelengths, band_data) for band_data in sensitivities.T]
 
     elif imaging_mode == ImagingMode.HYPERSPECTRAL:
@@ -263,7 +261,8 @@ def spectrum_from_path(path: str, imaging_mode: ImagingMode) -> list[IrregularSp
                 wavelengths[i - 1:i + 1],
                 sensitivities[i - 1:i + 1]
             )
-            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}"
+            # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
+            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
             bands.append(band)
     else:
         raise ValueError(f"Invalid imaging mode, it must be either multispectral or hyperspectral")

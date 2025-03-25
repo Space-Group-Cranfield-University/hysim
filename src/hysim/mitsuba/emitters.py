@@ -14,12 +14,12 @@ class DirectionalEmitter(Emitter):
         if self.direction is not None:
             return {
                 "type": "directional",
-                "radiance": self.irradiance.asdict,
+                "irradiance": self.irradiance.asdict,
                 "direction": self.direction
             }
         else:
             return {
                 "type": "directional",
-                "radiance": self.irradiance.asdict,
+                "irradiance": self.irradiance.asdict,
                 "to_world": self.to_world
             }

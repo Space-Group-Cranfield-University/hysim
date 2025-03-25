@@ -96,7 +96,8 @@ class Spectrum(ABC):
         str
             String of upper and lower values separated by underscore
         """
-        return f"{str(lower_value)}_{str(upper_value)}"
+        return f"{str(lower_value)}_{str(upper_value)}".replace(".", ",") # RuntimeError: xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
+
 
 
 @dataclass
