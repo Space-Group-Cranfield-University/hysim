@@ -254,7 +254,8 @@ class OutputFormatter:
 
 
 class OutputHandler2:
-    def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config):
+    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config):
+    def __init__(self, render_data, scene_builder:SceneBuilder,  config: Config):
         self.render_data = render_data
         self.config = config
         self.scene_builder = scene_builder

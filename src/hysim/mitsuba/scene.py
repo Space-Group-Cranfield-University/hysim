@@ -38,4 +38,3 @@ class Scene(MitsubaObject):
 
     def add_emitter(self, emitter: Emitter):
         self._emitters.append(emitter)
-        pass

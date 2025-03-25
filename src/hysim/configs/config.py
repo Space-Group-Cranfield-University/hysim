@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Literal, Set
+from typing import Dict, Literal, Set, Iterable
 
 from rickle import BaseRickle
 
@@ -22,9 +22,6 @@ class Config:
     _case_directory: str
     _directories: Set[str] = set()
     _sensor_spectrum_path: str
-    # This attribute is only needed for the sensor spectrum file, as it is the only case
-    # file read by hysim and not mitsuba
-
 
     def __init__(self, case_directory: str) -> None:
         self._file_type_ltr: Literal["file_type"] = "file_type"
@@ -76,8 +73,9 @@ class Config:
         return self._sensor_spectrum_path
 
     @property
-    def directories(self) -> Set[str]:
-        """A set of directories in the user specified case directory that are to be added to the mitsuba search path"""
+    def directories(self) -> Iterable[str]:
+        """A set of directories in the user specified case directory that are to be
+        added to the mitsuba search path"""
         return self._directories
 
     @property

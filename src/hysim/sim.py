@@ -20,9 +20,9 @@ from hysim.data import data_handling as dh
 
 # Simulator
 from hysim import output_data
+from hysim.configs.config import Config
 from hysim.scene.builders import SceneBuilder
-from hysim.scene import frame_transforms as frames
-
+from hysim.scene import frame_transforms as frames, scene_builder as sb
 
 class NoSceneLoaded(Exception):
     """Used to handle running a render without required data"""
@@ -84,7 +84,7 @@ class RendererControl:
         self.render = mi.render(self.mitsuba_scene)
 
 
-def run_sim(run_directory):
+def run_sim(run_directory: str):
     """Runs a single simulator case
 
     The function is called by the entry script to run a
@@ -110,29 +110,25 @@ def run_sim(run_directory):
     # ------------------------------- #
     logging.info("Getting user inputs from configuration files")
 
+
+
     user_inputs = input_data.Configs()
     user_inputs.load_configs(run_directory)
     kernel_paths = dh.get_kernel_paths()
 
+    mi.set_variant(user_inputs.case_config["mitsuba_variant"])
+
     logging.info("Calculating scene geometry from orbit data")
+
     orbit_data = frames.MissionInputProcessor(
         user_inputs.mission_config, kernel_paths
     )
-    mi.set_variant(user_inputs.case_config["mitsuba_variant"])
-
     # ------------------------------- #
     # Assemble Scene
     # ------------------------------- #
     logging.info("Building scene")
     scene = SceneBuilder(user_inputs, orbit_data)
     scene.build()
-    # scene.build_integrator()
-    # scene.build_sampler()
-    # scene.build_sun()
-    # scene.build_chaser()
-    # scene.build_target()
-    # scene.build_earth()
-    # scene.build_scene_dict()
 
     def calculate_relative_distance(p1: list, p2: list):
         """Calculates relative distance between two points
@@ -160,9 +156,8 @@ def run_sim(run_directory):
         scene.chaser.position, scene.target.position
     )
 
-    logging.debug(
-        f"Chaser ECI Coordinates: {orbit_data.chaser_state_vectors}"
-    )
+    logging.debug(f"Chaser ECI Coordinates: {orbit_data.chaser_state_vectors}")
+
     logging.info("Relative distance to target: %0.2fm", relative_distance)
 
     # ------------------------------- #
@@ -193,3 +188,21 @@ def run_sim(run_directory):
         run_directory,
     )
     output.produce_output_data(user_inputs)
+
+def run_sim2(run_directory:str):
+    config = Config(run_directory)
+    kernel_paths = dh.get_kernel_paths()
+    mi.set_variant(config.case.mitsuba_variant)
+    position_data = frames.ScenePositionData(config.mission, kernel_paths)
+    scene_builder = sb.SceneBuilder(config, position_data)
+    logging.debug(f"Chaser ECI Coordinates: {position_data.chaser_position}")
+    logging.info("Relative distance to target: %0.2fm", position_data.relative_distance)
+    logging.debug(scene_builder.scene.asdict)
+    logging.info("Adding case directory search paths to mitsuba")
+    fr = mi.Thread.thread().file_resolver()
+    for path in config.directories:
+        fr.append(path)
+    sim2 = mi.load_dict(scene_builder.scene.asdict)
+    render = mi.render(sim2)
+    output = output_data.OutputHandler2(render, scene_builder, config)
+    output.export_data()

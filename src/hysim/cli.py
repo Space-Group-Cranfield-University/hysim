@@ -33,7 +33,8 @@ def run_case(run_directory: str):
     case_directory = return_unix_path_string(case_directory)
     logging.info(f"Case Directory: {case_directory}") 
 
-    sim.run_sim(case_directory)
+    #sim.run_sim(case_directory)
+    sim.run_sim2(case_directory)
 
 
 # == CLI ARGUMENTS == #
