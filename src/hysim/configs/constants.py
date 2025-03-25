@@ -9,7 +9,7 @@ class ConfigType(StrEnum):
     MATERIAL = "material_config"
 
 
-# class MitsubaVariants(StrEnum): load from mitsuba.variants()
+# class MitsubaVariant(StrEnum): load from mitsuba.variants()
 
 # class SamplerType(StrEnum): load from hysim.mitsuba.samplers etc
 
@@ -25,3 +25,9 @@ class ImagingMode(StrEnum):
     spectral response over a wide range of wavelengths. The total number of bands is 
     determined by the number of band response columns provided by the data file.
     """
+
+class OutputFormat(StrEnum):
+    """ A list of output formats for the simulation data"""
+    EXR = "exr"
+    PNG = "png"
+    CSV = "csv"

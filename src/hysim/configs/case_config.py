@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from pydantic.dataclasses import dataclass
 
-from hysim.configs.constants import ConfigType
+from hysim.configs.constants import ConfigType, OutputFormat
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class Integrator:
 
 @dataclass(frozen=True)
 class OutputItem:
-    format: str
+    format: OutputFormat
     file_name: str
     reference_wavelengths: Optional[List[int]] = None
 

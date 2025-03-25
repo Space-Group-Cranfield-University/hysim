@@ -55,9 +55,10 @@ class SceneBuilder:
         film = films.SpectralFilm()
         film.height = config.sensor.film.height
         film.width = config.sensor.film.width
-        film.spectra = dh.spectrum_from_path(
+        self.spectra = dh.spectrum_from_path(
             config.sensor_spectrum_path, config.sensor.imaging_mode
         )
+        film.spectra = self.spectra
 
         chaser = sensors.PerspectiveCamera()
         chaser.name = "chaser_sensor"
