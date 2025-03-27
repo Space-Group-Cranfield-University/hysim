@@ -1,17 +1,41 @@
 import os
 from typing import Literal, Set, Iterable
 
+from pydantic import ValidationError
 from rickle import BaseRickle
+import logging
 
 from hysim.configs.case_config import CaseConfig
-from hysim.configs.constants import ConfigType
+from hysim.configs.constants import ConfigType, ImagingMode, OutputFormat
 from hysim.configs.materials_config import MaterialsConfig, MaterialWrapper
 from hysim.configs.mission_config import MissionConfig
 from hysim.configs.sensor_config import SensorConfig
 from hysim.configs.parts_config import PartsConfig, Part
 from hysim.mitsuba.bsdfs import BSDFs
 
-# TODO: Format exceptions
+
+def _log_config_error(file_type: str, location: str, message: str, path: str,
+                      value: str):
+    """Logs a configuration error message
+
+    Parameters
+    ----------
+    file_type : str
+        The type of configuration file
+    location : str
+        The path to the error in the config file
+    message : str
+        The error message
+    path : str
+        The path to the config file
+    value : str
+        The value that caused the error
+    """
+    logging.error(
+        f'The field "{location}" is invalid in "{path}" (ConfigType: {file_type}).\n'
+        f"          {'Reason:'.ljust(10)}{message}\n"
+        f"          {'Input:'.ljust(10)}{value}"
+    )
 
 
 class Config:
@@ -31,6 +55,8 @@ class Config:
     _directories: Set[str] = set()
     _sensor_spectrum_path: str
 
+    _has_error: bool = False
+
     def __init__(self, case_directory: str) -> None:
         # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
@@ -47,32 +73,60 @@ class Config:
         self._sensor_spectrum_path = _case_files[self._sensor_config.spectrum_file]
         self._directories.add(case_directory)
 
+        if self._sensor_config.imaging_mode == ImagingMode.MULTISPECTRAL:
+            for i, output in enumerate(self._case_config.output):
+                if output.format == OutputFormat.EXR:
+                    if output.reference_wavelengths is None:
+                        _log_config_error(ConfigType.CASE,
+                                          f"output[{i}].reference_wavelengths",
+                                          "Reference wavelengths are required for multispectral imaging",
+                                          "TODO:",  # TODO: Get path to case config file
+                                          "None")
+                        self._has_error = True
+                        break
+
+        if self._has_error:
+            logging.shutdown()
+            import sys
+            sys.exit()
 
     def _init_configs(self, path: str) -> None:
         rickle = BaseRickle(path)
         file_type = rickle[self._file_type_ltr]
-        if file_type == ConfigType.CASE:
-            self._case_config = CaseConfig(**rickle.dict())
 
-        elif file_type == ConfigType.MISSION:
-            self._mission_config = MissionConfig(**rickle.dict())
+        try:
+            if file_type == ConfigType.CASE:
+                self._case_config = CaseConfig(**rickle.dict())
 
-        elif file_type == ConfigType.SENSOR:
-            self._sensor_config = SensorConfig(**rickle.dict())
+            elif file_type == ConfigType.MISSION:
+                self._mission_config = MissionConfig(**rickle.dict())
 
-        elif file_type == ConfigType.PARTS:
-            self._part_config = PartsConfig(file_type)
-            for part_name, part_dict in rickle.dict()["components"].items():
-                self._part_config.parts[part_name] = Part(**part_dict)
+            elif file_type == ConfigType.SENSOR:
+                self._sensor_config = SensorConfig(**rickle.dict())
 
-        elif file_type == ConfigType.MATERIAL:
-            self._materials_config = MaterialsConfig(file_type)
-            for material_name, material_dict in rickle.dict()["materials"].items():
-                self._materials_config.materials[material_name] = MaterialWrapper(
-                    **material_dict
-                ).material
-        else:
-            raise ValueError(f"{file_type} is an invalid config type at {path}")
+            elif file_type == ConfigType.PARTS:
+                self._part_config = PartsConfig(file_type)
+                for part_name, part_dict in rickle.dict()["components"].items():
+                    self._part_config.parts[part_name] = Part(**part_dict)
+
+            elif file_type == ConfigType.MATERIAL:
+                self._materials_config = MaterialsConfig(file_type)
+                for material_name, material_dict in rickle.dict()["materials"].items():
+                    self._materials_config.materials[material_name] = MaterialWrapper(
+                        **material_dict
+                    ).material
+            else:
+                self._has_error = True
+                logging.error(f"{file_type} is an invalid config type at {path}")
+                
+        except ValidationError as e:
+            for error in e.errors():
+                message = error["msg"]
+                location = ".".join(map(str, error["loc"]))
+                value = error["input"]
+
+                _log_config_error(file_type, location, message, path, value)
+            self._has_error = True
 
     @property
     def case_directory(self) -> str:

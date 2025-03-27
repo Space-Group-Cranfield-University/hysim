@@ -260,7 +260,7 @@ class OutputHandler2:
     - CSV
     """
 
-    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): TODO: mitsuba import warning
+    #def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): #TODO: mitsuba import warning
     def __init__(self, render_data, scene_builder: SceneBuilder, config: Config):
         """Initializer
 
@@ -278,7 +278,7 @@ class OutputHandler2:
         self._config = config
         self._scene_builder = scene_builder
         self._case_directory = config.case_directory
-        self._log_prefix: Final[str] = "Exporting results as ."
+        self._log_prefix: Final[str] = "Exporting results as"
         self._format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
             OutputFormat.EXR: self._export_as_exr,
             OutputFormat.PNG: self._export_as_png,
@@ -295,8 +295,8 @@ class OutputHandler2:
 
     def _create_output_directory(self, directory: str, output_format: OutputFormat):
         if not self._create_directory(directory):
-            logging.info(
-                f"{directory} already exists. The {output_format} file(s) inside may be overwritten."
+            logging.debug(
+                f"The {directory} already exists. The {output_format} files inside may be overwritten."
             )
 
     @staticmethod
@@ -309,7 +309,7 @@ class OutputHandler2:
         ]
 
     def _export_as_exr(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix}{output_item.format} file")
+        logging.info(f"{self._log_prefix} a .{output_item.format} file")
 
         channel_names: list[str]
         if self._config.sensor.imaging_mode == ImagingMode.MULTISPECTRAL:
@@ -318,7 +318,7 @@ class OutputHandler2:
                 channel_names = self._create_channel_names(
                     output_item.reference_wavelengths
                 )
-            except KeyError:
+            except (KeyError, TypeError):
                 logging.error("reference_wavelengths required for multispectral .exr")
         elif self._config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
             # User rolling average of narrow band values
@@ -344,8 +344,10 @@ class OutputHandler2:
             channel_names=channel_names,
         )
 
-        result_bmp.metadata()["pixelAspectRatio"] = 1
-        result_bmp.metadata()["screenWindowWidth"] = 1
+        if "scalar" in mi.variant():
+            # These assignments cause errors on cuda variants.
+            result_bmp.metadata()["pixelAspectRatio"] = 1
+            result_bmp.metadata()["screenWindowWidth"] = 1
 
         file_name = output_item.file_name
         exr = "." + OutputFormat.EXR
@@ -362,7 +364,7 @@ class OutputHandler2:
         mi.util.write_bitmap(file_name, result_bmp)
 
     def _export_as_png(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix}{output_item.format} file")
+        logging.info(f"{self._log_prefix} .{output_item.format} files")
 
         # output_item.file_name is actually a directory here
         self._create_output_directory(output_item.file_name, OutputFormat.PNG)
@@ -381,7 +383,7 @@ class OutputHandler2:
             )
 
     def _export_as_csv(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix}{OutputFormat.CSV} files")
+        logging.info(f"{self._log_prefix} .{OutputFormat.CSV} files")
 
         # output_item.file_name is actually a directory here
         self._create_output_directory(output_item.file_name, OutputFormat.CSV)
