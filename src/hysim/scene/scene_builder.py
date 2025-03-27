@@ -99,7 +99,7 @@ class SceneBuilder:
         """
         self._scene = scene.Scene()
 
-        logging.debug("Building scene integrator")
+        logging.debug("Building integrator")
         self._build_integrator(config)
         logging.debug("Building Earth")
         self._build_earth(position_data)

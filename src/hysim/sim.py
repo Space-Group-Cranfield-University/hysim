@@ -189,6 +189,20 @@ def run_sim(run_directory: str):
     )
     output.produce_output_data(user_inputs)
 
+def _set_mitsuba_logger():
+    """Creates a custom formatter to match HySim and sets mitsuba's logger to use.
+    Also sets the log level to mi.LogLevel.Info to make sure the start rendering and
+    finished rendering messages are displayed."""
+    class CustomMitsubaFormatter(mi.Formatter):
+        def format(self, level: mi.LogLevel, thread, class_, file, line, msg):
+            return f" {level.name.upper():8} Mitsuba - {msg}"
+
+    # Note:  there is no progress bar if mi.variant() is a scalar varint
+    mitsuba_logger = mi.Thread.thread().logger()
+    mitsuba_logger.set_formatter(CustomMitsubaFormatter())
+    mitsuba_logger.set_log_level(mi.LogLevel.Info)
+    del mitsuba_logger
+
 
 def run_sim2(run_directory: str):
     """Runs a single simulator case
@@ -222,6 +236,7 @@ def run_sim2(run_directory: str):
 
     mi.set_variant(config.case.mitsuba_variant)
 
+
     logging.info("Calculating scene geometry from orbit data")
     position_data = frames.ScenePositionData(config.mission, kernel_paths)
 
@@ -242,19 +257,21 @@ def run_sim2(run_directory: str):
     logging.debug(scene_dict)
 
     logging.info("Adding case directory search paths to mitsuba")
-    fr = mi.Thread.thread().file_resolver()
+    file_resolver = mi.Thread.thread().file_resolver()
     for path in config.directories:
-        fr.append(path)
-        logging.debug("\t Added: " + path)
+        file_resolver.append(path)
+        logging.debug("Added: " + path)
+    del file_resolver
 
     logging.info("Loading scene into Mitsuba")
     sim = mi.load_dict(scene_dict)
     logging.info("Scene assembled successfully")
     logging.info("Running Mitsuba")
 
-    print("\n")
-    render = mi.render(sim)
-    print("\n")
+    _set_mitsuba_logger()
+    print("")
+    render: mi.TensorXf = mi.render(sim)
+    print("")
 
     logging.info("Render complete")
     # ------------------------------- #

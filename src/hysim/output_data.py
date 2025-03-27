@@ -296,7 +296,7 @@ class OutputHandler2:
     def _create_output_directory(self, directory: str, output_format: OutputFormat):
         if not self._create_directory(directory):
             logging.debug(
-                f"The {directory} already exists. The {output_format} files inside may be overwritten."
+                f"The directory {directory}  already exists. The {output_format} files inside may be overwritten."
             )
 
     @staticmethod
