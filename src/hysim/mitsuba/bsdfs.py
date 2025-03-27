@@ -1,6 +1,6 @@
 """BSDFs (materials) adapted from:
-https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#"""
-from typing import TypeVar
+https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#
+"""
 
 from hysim.mitsuba.abc import *
 from hysim.mitsuba.spectra import Spectra
@@ -9,6 +9,8 @@ from pydantic.dataclasses import dataclass
 
 @dataclass
 class BSDF(NamedMitsubaObject):
+    """Abstract base class for Mitsuba BSDF objects"""
+
     pass
 
 

@@ -1,7 +1,10 @@
 from strenum import StrEnum
+import mitsuba as mi
 
 
 class ConfigType(StrEnum):
+    """Enum of valid configuration types"""
+
     CASE = "case_config"
     MISSION = "mission_config"
     SENSOR = "sensor_config"
@@ -9,12 +12,16 @@ class ConfigType(StrEnum):
     MATERIAL = "material_config"
 
 
-# class MitsubaVariant(StrEnum): load from mitsuba.variants()
+MitsubaVariant = StrEnum(
+    "MitsubaVariant", {str(variant).upper(): str(variant) for variant in mi.variants()}
+)
 
 # class SamplerType(StrEnum): load from hysim.mitsuba.samplers etc
 
+
 class ImagingMode(StrEnum):
-    """ A spectrum of film sensitivity (quantum efficiency)"""
+    """A spectrum of film sensitivity (quantum efficiency)"""
+
     HYPERSPECTRAL = "hyperspectral"
     """ Represents a single narrow band for each wavelength. Each wavelength has a 
     single response value. The total number of bands is determined by the number of 
@@ -26,8 +33,10 @@ class ImagingMode(StrEnum):
     determined by the number of band response columns provided by the data file.
     """
 
+
 class OutputFormat(StrEnum):
-    """ A list of output formats for the simulation data"""
+    """A list of output formats for the simulation data"""
+
     EXR = "exr"
     PNG = "png"
     CSV = "csv"

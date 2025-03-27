@@ -3,6 +3,7 @@
 This module contains classes to handle and format output render data from
 the simulator.
 """
+
 import os
 import logging
 from itertools import tee
@@ -163,9 +164,7 @@ class OutputFormatter:
                     output_params["reference_wavelengths"]
                 )
             except KeyError:
-                logging.error(
-                    "reference_wavelengths required for multispectral .exr"
-                )
+                logging.error("reference_wavelengths required for multispectral .exr")
 
         # Hyperspectral case
         elif user_inputs.sensor_config["imaging_mode"] == "hyperspectral":
@@ -245,31 +244,49 @@ class OutputFormatter:
             dir_name = output_params["file_name"]
             band_name = f"Band_{i}.csv"
             results_array = np.array(self.render_data[:, :, i])
-            np.savetxt(
-                f"{dir_name}/{band_name}", results_array, delimiter=","
-            )
+            np.savetxt(f"{dir_name}/{band_name}", results_array, delimiter=",")
 
     def export_as_tiff(self, output_params):
         raise NotImplementedError("Tiff export not added")
 
 
 class OutputHandler2:
-    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): TODO:
-    def __init__(self, render_data, scene_builder:SceneBuilder,  config: Config):
-        self.render_data = render_data
-        self.config = config
-        self.scene_builder = scene_builder
-        self.case_directory = config.case_directory
-        self.log_prefix: Final[str] = "Exporting results as ."
-        self.results_dir: Final[str] = self._join_path(self.case_directory, "results")
-        self.format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
+    """Formats data from the rendered scene and outputs it to a user specified location.
+
+    Output data is converted to user defined format. Currently
+    supported formats:
+    - EXR
+    - PNG
+    - CSV
+    """
+
+    # def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): TODO: mitsuba import warning
+    def __init__(self, render_data, scene_builder: SceneBuilder, config: Config):
+        """Initializer
+
+        Parameters
+        ----------
+        render_data : mi.TensorXf
+            Tensor array output from mitsuba
+        scene_builder : SceneBuilder
+            The scene builder. Only used for getting spectra data with a hyperspectral
+            imaging mode set.
+        config : Config
+            The user configuration object
+        """
+        self._render_data = render_data
+        self._config = config
+        self._scene_builder = scene_builder
+        self._case_directory = config.case_directory
+        self._log_prefix: Final[str] = "Exporting results as ."
+        self._format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
             OutputFormat.EXR: self._export_as_exr,
             OutputFormat.PNG: self._export_as_png,
             OutputFormat.CSV: self._export_as_csv,
         }
 
     @staticmethod
-    def _create_directory(directory:str) -> bool:
+    def _create_directory(directory: str) -> bool:
         """Returns true if a directory was created"""
         if not os.path.isdir(directory):
             os.mkdir(directory)
@@ -279,51 +296,50 @@ class OutputHandler2:
     def _create_output_directory(self, directory: str, output_format: OutputFormat):
         if not self._create_directory(directory):
             logging.info(
-                f"{directory} already exists. The {output_format} files inside may be overwritten.")
-
-    @staticmethod # maybe move to util module
-    def _join_path(str1:str, str2:str)->str:
-        return os.path.join(str1, str2).replace("\\", "/")
+                f"{directory} already exists. The {output_format} file(s) inside may be overwritten."
+            )
 
     @staticmethod
     def _create_channel_names(wavelengths: list[float]) -> list[str]:
         """Generates list of channel names for the following
         exr header format: S0.xxx,xxnm where x is wavelength.
         """
-        return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
+        return [
+            f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths
+        ]
 
     def _export_as_exr(self, output_item: OutputItem):
-        logging.info(f"{self.log_prefix}{OutputFormat.EXR} file")
+        logging.info(f"{self._log_prefix}{output_item.format} file")
 
         channel_names: list[str]
-        if self.config.sensor.imaging_mode == ImagingMode.MULTISPECTRAL:
+        if self._config.sensor.imaging_mode == ImagingMode.MULTISPECTRAL:
             # Find user input for band reference values
             try:
                 channel_names = self._create_channel_names(
                     output_item.reference_wavelengths
                 )
             except KeyError:
-                logging.error(
-                    "reference_wavelengths required for multispectral .exr"
-                )
-        elif self.config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
+                logging.error("reference_wavelengths required for multispectral .exr")
+        elif self._config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
             # User rolling average of narrow band values
-            wavelengths = [(spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
-                           for spectrum in self.scene_builder.spectra]
+            wavelengths = [
+                (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
+                for spectrum in self._scene_builder.spectra
+            ]
             channel_names = self._create_channel_names(wavelengths)
 
-        if len(channel_names) != len(self.render_data[0, 0, :]):
+        if len(channel_names) != len(self._render_data[0, 0, :]):
             raise ValueError(
                 "Total reference wavelengths and channels should be the same"
             )
 
-        if len(self.render_data[0, 0, :]) == 1:
+        if len(self._render_data[0, 0, :]) == 1:
             pixel_format = mi.Bitmap.PixelFormat.Y
         else:
             pixel_format = mi.Bitmap.PixelFormat.MultiChannel
 
         result_bmp = mi.Bitmap(
-            self.render_data,
+            self._render_data,
             pixel_format=pixel_format,
             channel_names=channel_names,
         )
@@ -336,25 +352,26 @@ class OutputHandler2:
         if not file_name.endswith(exr):
             file_name += exr
 
-        self._create_directory(self.results_dir)
-        file_path = self._join_path(self.results_dir, file_name)
-        if os.path.isfile(file_path):
+        results_dir = os.path.dirname(file_name)
+        if results_dir is not None:
+            self._create_directory(results_dir)
+
+        if os.path.isfile(file_name):
             logging.info(f"A {exr} file already exists. Overwriting...")
 
-        mi.util.write_bitmap(file_path, result_bmp)
+        mi.util.write_bitmap(file_name, result_bmp)
 
     def _export_as_png(self, output_item: OutputItem):
-        logging.info(f"{self.log_prefix}{OutputFormat.PNG} files")
+        logging.info(f"{self._log_prefix}{output_item.format} file")
 
-        self._create_directory(self.results_dir)
-        png_dir = self._join_path(self.results_dir, output_item.file_name)
-        self._create_output_directory(png_dir, OutputFormat.PNG)
+        # output_item.file_name is actually a directory here
+        self._create_output_directory(output_item.file_name, OutputFormat.PNG)
 
-        for i in range(len(self.render_data[0, 0, :])):
+        for i in range(len(self._render_data[0, 0, :])):
             band_name = f"Band_{i}.png"
-            results_array = np.array(self.render_data[:, :, i])
+            results_array = np.array(self._render_data[:, :, i])
             iio.imwrite(
-                f"{png_dir}/{band_name}",
+                f"{output_item.file_name}/{band_name}",
                 # np.interp(
                 #      results_array,
                 #      (results_array.min(), results_array.max()),
@@ -364,21 +381,20 @@ class OutputHandler2:
             )
 
     def _export_as_csv(self, output_item: OutputItem):
-        logging.info(f"{self.log_prefix}{OutputFormat.CSV} files")
+        logging.info(f"{self._log_prefix}{OutputFormat.CSV} files")
 
-        self._create_directory(self.results_dir)
-        csv_dir = self._join_path(self.results_dir, output_item.file_name)
-        self._create_output_directory(csv_dir, OutputFormat.CSV)
+        # output_item.file_name is actually a directory here
+        self._create_output_directory(output_item.file_name, OutputFormat.CSV)
 
-        for i in range(len(self.render_data[0, 0, :])):
+        # output_item.file_name is actually a directory here
+        for i in range(len(self._render_data[0, 0, :])):
             band_name = f"Band_{i}.csv"
-            results_array = np.array(self.render_data[:, :, i])
+            results_array = np.array(self._render_data[:, :, i])
             np.savetxt(
-                f"{csv_dir}/{band_name}", results_array, delimiter=","
+                f"{output_item.file_name}/{band_name}", results_array, delimiter=","
             )
 
     def export_data(self):
-        for output in self.config.case.output:
-            self.format_map[output.format](output)
-
-
+        """For each format defined by user, export output data"""
+        for output in self._config.case.output:
+            self._format_map[output.format](output)

@@ -7,6 +7,10 @@ from hysim.mitsuba.shapes import Shape
 
 
 class Scene(MitsubaObject):
+    """Mitsuba scene object
+    Use with mitsuba.load_dict() to generate a Mitsuba scene
+    """
+
     _integrator: Integrator
     _sensors: List[Sensor] = []
     _emitters: List[Emitter] = []
@@ -25,16 +29,26 @@ class Scene(MitsubaObject):
 
     @property
     def integrator(self) -> Integrator:
+        """Get the integrator for the scene
+        Returns
+        -------
+        Integrator
+            The integrator for the scene
+        """
         return self._integrator
 
     def set_integrator(self, integrator: Integrator):
+        """Set the integrator for the scene"""
         self._integrator = integrator
 
     def add_sensor(self, sensor: Sensor):
+        """Add a sensor to the scene"""
         self._sensors.append(sensor)
 
     def add_shape(self, shape: Shape):
+        """Add a shape to the scene"""
         self._shapes.append(shape)
 
     def add_emitter(self, emitter: Emitter):
+        """Add an emitter to the scene"""
         self._emitters.append(emitter)

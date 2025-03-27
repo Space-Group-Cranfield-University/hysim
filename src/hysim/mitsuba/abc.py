@@ -20,7 +20,7 @@ class MitsubaObject(ABC):
 
     # TODO: add type:str field to allow for more accurate type checking when using pydantic
     # and Union (pydantic will check the type field which will be a literal on concrete implementations)
-    # e.g type: Literal[str] = kw_only
+    # e.g type: Literal[str] = "diffuse" for the DiffuseMaterial
 
     # mitsuba_dict: MDict
 
@@ -30,23 +30,35 @@ class MitsubaObject(ABC):
         """Returns the object as a dict for use with Mitsuba"""
         raise NotImplementedError
 
+
 class NamedMitsubaObject(MitsubaObject):
     name: Optional[str] = None
 
 
-def _iterate_named_objects(d: MDict,
-                           objects: Iterable[NamedMitsubaObject],
-                           default_prefix: str) -> MDict:
+def _iterate_named_objects(
+    d: MDict, objects: Iterable[NamedMitsubaObject], default_prefix: str
+):
+    """
+    Iterates over a collection of potential named mitsuba objects and adds them to the dictionary
+    Parameters
+    ----------
+    d : MDict
+        The dictionary to add the objects to.
+    objects : Iterable[NamedMitsubaObject]
+        The collection of objects to iterate.
+    default_prefix : str
+        The default prefix to use for the object if it does not have a name.
+    """
     for i, obj in enumerate(objects):
         if obj.name:
             d[obj.name] = obj.asdict
         else:
             d[f"{default_prefix}_{i}"] = obj.asdict
-    return d
 
 
 def _get_subclasses(cls: type) -> typing_extensions.TypeAlias:
     return Union[tuple(cls.__subclasses__())]
+
 
 # class IPositionedMitsubaObject(Protocol):
 #     to_world: mi.ScalarTransform4f

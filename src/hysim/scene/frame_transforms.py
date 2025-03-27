@@ -18,7 +18,6 @@ from hysim.configs.mission_config import MissionConfig, Spacecraft
 import mitsuba as mi
 
 
-
 # Types
 Vector = npt.NDArray[np.float64]
 # TODO This is needed because you cannot type hint a function with a mitsuba type before
@@ -274,6 +273,23 @@ class LocationFormat(StrEnum):
 
 
 class StateVectors:
+    """Calculates the state vectors of the Earth, Sun, Target and Chaser
+    Attributes
+    ----------
+    _epoch : float
+        Time in seconds past J2000
+    earth : Vector
+        Earth state vector [0, 0, 0, 0, 0, 0] [m/s]
+    sun : Vector
+        Sun state vector [x, y, z, vx, vy, vz] [m/s]
+    target : Vector
+        Target state vector [x, y, z, vx, vy, vz] [m/s]
+    chaser : Vector
+        Chaser state vector [x, y, z, vx, vy, vz] [m/s]
+
+    """
+
+    _epoch: float
     earth: Vector = np.zeros(6, dtype=np.float64)
     sun: Vector
     target: Vector
@@ -291,12 +307,12 @@ class StateVectors:
 
         Parameters
         ----------
-        scene_object : str
-            String stating object to be converted
+        spacecraft : Spacecraft
+            The Spacecraft object from mission config file
 
         Returns
         -------
-        list
+        Vector
             Orbit state vectors
         """
         if spacecraft.position_frame == LocationFormat.STATE:
@@ -333,8 +349,8 @@ class StateVectors:
 class ScenePositionData:
     def __init__(self, mission_config: MissionConfig, kernel_paths: List[str]):
         spice.furnsh(kernel_paths)
-        self.mission_config = mission_config
-        self._epoch = spice.str2et(self.mission_config.datetime)
+        self._mission_config = mission_config
+        self._epoch = spice.str2et(self._mission_config.datetime)
 
         self._state_vectors = StateVectors(mission_config, self._epoch)
 
@@ -360,16 +376,30 @@ class ScenePositionData:
 
     @property
     def chaser_position(self) -> Vector:
+        """Returns chaser position in target centered LVLH
+
+        Returns
+        -------
+        Vector
+            Chaser position [x, y, z] [m]
+
+        """
         return self._chaser_position
 
     @property
     def sun_direction_vector(self) -> MVector:
-        return mi.Vector3f(self._sun_direction_vector)
+        """Returns Sun direction vector relative to target centered LVLH
+        Returns
+        -------
+        MVector
+            Sun direction vector
+        """
+        return self._sun_direction_vector
 
     @classmethod
-    def _get_spacecraft_transform(cls,
-                                 position: Vector,
-                                 attitude: list[float]) -> MTransform:
+    def _get_spacecraft_transform(
+        cls, position: Vector, attitude: list[float]
+    ) -> MTransform:
         return (
             mi.ScalarTransform4f()
             .translate(position)
@@ -380,17 +410,20 @@ class ScenePositionData:
 
     @property
     def earth_transform(self) -> MTransform:
+        """Returns the mitsuba transformation matrix for the Earth"""
         return mi.ScalarTransform4f().translate(self._earth_position)
 
     @property
     def target_transform(self) -> MTransform:
+        """Returns the mitsuba transformation matrix for the target"""
         return self._get_spacecraft_transform(
-            self._target_position, self.mission_config.target.attitude
+            self._target_position, self._mission_config.target.attitude
         )
 
     @property
     def chaser_transform(self) -> MTransform:
-        if self.mission_config.chaser.is_lookat:
+        """Returns the mitsuba transformation matrix for the chaser"""
+        if self._mission_config.chaser.is_lookat:
             return mi.ScalarTransform4f().look_at(
                 origin=self._chaser_position,
                 target=[0, 0, 0],
@@ -398,22 +431,13 @@ class ScenePositionData:
             )
         else:
             return self._get_spacecraft_transform(
-                self._chaser_position, self.mission_config.chaser.attitude
+                self._chaser_position, self._mission_config.chaser.attitude
             )
 
     @property
     def relative_distance(self) -> float:
-        """Calculates relative distance between two points
-
-        Calculates distance between two points in a 3d
+        """Calculates relative distance between the target and chaser in a 3d
         cartesian coordinate system.
-
-        Parameters
-        ----------
-        p1 : list
-            First set of coordinates in 3 dimensions [x,y,z]
-        p2 : list
-            Second set of coordinates in 3 dimensions [x,y,z]
 
         Returns
         -------
@@ -423,7 +447,7 @@ class ScenePositionData:
         p1 = self._chaser_position
         p2 = self._target_position
         return (
-                (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
+            (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
         ) ** 0.5
 
 

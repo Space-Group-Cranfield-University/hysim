@@ -1,7 +1,11 @@
+import numpy as np
+import logging
+
 from hysim.configs.config import Config
+from hysim.configs.constants import ImagingMode
 
 from hysim.scene.frame_transforms import ScenePositionData
-from hysim.data import data_handling as dh
+from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (
     films,
@@ -16,14 +20,94 @@ from hysim.mitsuba import (
 )
 
 
+def _spectrum_from_path(
+    path: str, imaging_mode: ImagingMode
+) -> list[spectra.IrregularSpectrum]:
+    """Reads spectrum data from a .spd file and returns it as a list of IrregularSpectrum.
+    Supports reading multiple columns of sensitivities from an .spd file.
+
+    Parameters
+    ----------
+    path : str
+        Path to spectrum file
+    imaging_mode : ImagingMode
+        The imaging mode (multispectral or hyperspectral)
+
+    Returns
+    -------
+    list[IrregularSpectrum]
+        A collection of spectra data in the IrregularSpectrum class
+
+    """
+    spectrum_data = spdr.SPDReader(path)
+    bands = []
+    sensitivities = spectrum_data.values
+    wavelengths = spectrum_data.wavelengths
+
+    if imaging_mode == ImagingMode.MULTISPECTRAL:
+        # NOTE: might need to refactored to properly handle single column case
+        if np.ndim(sensitivities) == 1:
+            sensitivities = np.expand_dims(sensitivities, axis=1)
+        bands = [
+            spectra.IrregularSpectrum(wavelengths, band_data)
+            for band_data in sensitivities.T
+        ]
+
+    elif imaging_mode == ImagingMode.HYPERSPECTRAL:
+        if sensitivities.ndim != 1:
+            raise TypeError("Too many columns for hyperspectral data")
+        for i, _ in enumerate(wavelengths[1:], start=1):
+            band = spectra.IrregularSpectrum(
+                wavelengths[i - 1 : i + 1], sensitivities[i - 1 : i + 1]
+            )
+            # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
+            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
+            bands.append(band)
+    else:
+        raise ValueError(
+            f"Invalid imaging mode, it must be either {ImagingMode.MULTISPECTRAL} or {ImagingMode.HYPERSPECTRAL}"
+        )
+    return bands
+
+
 class SceneBuilder:
+    """Builder class that constructs objects in scene and adds
+    them to a mitsuba scene class.
+
+    Attributes
+    ----------
+    scene : scene.Scene
+        Class object defining the entire scene after construction. This is
+        passed to Mitsuba for rendering.
+
+    spectra : list[spectra.IrregularSpectrum]
+        Spectra data from the film in the scene. Used for outputting hyperspectral
+        data to an .exr file in the OutputHandler class.
+    """
+
     def __init__(self, config: Config, position_data: ScenePositionData):
+        """Initializes the SceneBuilder class
+
+        Parameters
+        ----------
+        config : Config
+            Object containing user input data
+
+        position_data : ScenePositionData
+            Scene objects positional data
+
+        """
         self._scene = scene.Scene()
 
+        logging.debug("Building scene integrator")
         self._build_integrator(config)
+        logging.debug("Building Earth")
         self._build_earth(position_data)
+        logging.debug("Building Sun")
         self._build_sun(position_data)
+        logging.debug("Building Chaser")
         self._build_chaser(config, position_data)
+        logging.debug("Building Target")
         self._build_target(config, position_data)
 
     def _build_integrator(self, config: Config):
@@ -49,13 +133,15 @@ class SceneBuilder:
         self._scene.add_emitter(sun)
 
     def _build_chaser(self, config: Config, position_data: ScenePositionData):
+
+        # TODO: Add option to choose between internal sensor data, user
         sampler = samplers.StratifiedSampler()
         sampler.sample_count = config.case.sampler.sample_count
 
         film = films.SpectralFilm()
         film.height = config.sensor.film.height
         film.width = config.sensor.film.width
-        self.spectra = dh.spectrum_from_path(
+        self._spectra = _spectrum_from_path(
             config.sensor_spectrum_path, config.sensor.imaging_mode
         )
         film.spectra = self.spectra
@@ -83,7 +169,10 @@ class SceneBuilder:
             mesh.to_world = position_data.target_transform
             self._scene.add_shape(mesh)
 
-
     @property
     def scene(self):
         return self._scene
+
+    @property
+    def spectra(self):
+        return self._spectra

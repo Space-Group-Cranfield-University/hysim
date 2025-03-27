@@ -1,8 +1,13 @@
+"""Shapes adapted from:
+https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_shapes.html"""
+
 from hysim.mitsuba.abc import *
 from hysim.mitsuba.bsdfs import BSDF
 
 
 class Shape(NamedMitsubaObject):
+    """Abstract base class for Mitsuba shape objects"""
+
     to_world: Transform
     pass
 

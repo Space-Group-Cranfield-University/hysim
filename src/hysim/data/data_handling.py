@@ -8,16 +8,12 @@ import os
 from importlib import resources
 from enum import Enum
 
-import numpy as np
 from strenum import StrEnum
 from pathlib import Path
 
 import json
 
-from hysim.configs.constants import ImagingMode
-from hysim.data import spd_reader as spdr
 from hysim.mitsuba.bsdfs import TwoSidedBRDF
-from hysim.mitsuba.spectra import IrregularSpectrum
 
 
 # ===== IO Error Handling ===== #
@@ -128,6 +124,14 @@ def read_json_package_data(path, file):
 
 @functools.cache
 def load_material_database() -> dict[str, TwoSidedBRDF]:
+    """Loads the material database caches it and returns it as
+    a dictionary
+
+    Returns
+    -------
+    dict[str, TwoSidedBRDF]
+        Dictionary of materials
+    """
     materials = read_json_package_data(
         MaterialsData.PATH, MaterialsData.MATERIALS_FILE
     )
@@ -239,31 +243,3 @@ def list_defined_light_sources():
         When called
     """
     raise NotImplementedError()
-
-
-def spectrum_from_path(path: str, imaging_mode: ImagingMode) -> list[IrregularSpectrum]:
-    spectrum_data = spdr.SPDReader(path)
-    bands = []
-    sensitivities = spectrum_data.values
-    wavelengths = spectrum_data.wavelengths
-
-    if imaging_mode == ImagingMode.MULTISPECTRAL:
-        # NOTE: might need to refactored to properly handle single column case
-        if np.ndim(sensitivities) == 1:
-            sensitivities = np.expand_dims(sensitivities, axis=1)
-        bands = [IrregularSpectrum(wavelengths, band_data) for band_data in sensitivities.T]
-
-    elif imaging_mode == ImagingMode.HYPERSPECTRAL:
-        if sensitivities.ndim != 1:
-            raise TypeError("Too many columns for hyperspectral data")
-        for i, _ in enumerate(wavelengths[1:], start=1):
-            band = IrregularSpectrum(
-                wavelengths[i - 1:i + 1],
-                sensitivities[i - 1:i + 1]
-            )
-            # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
-            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
-            bands.append(band)
-    else:
-        raise ValueError(f"Invalid imaging mode, it must be either multispectral or hyperspectral")
-    return bands

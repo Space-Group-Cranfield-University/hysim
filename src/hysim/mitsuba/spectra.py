@@ -1,9 +1,14 @@
+"""Spectra adapted from:
+https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_spectra.html"""
+
 from hysim.mitsuba.abc import *
 from pydantic.dataclasses import dataclass
 
 
 @dataclass
 class Spectrum(NamedMitsubaObject):
+    """Abstract base class for Mitsuba spectrum objects"""
+
     pass
 
 

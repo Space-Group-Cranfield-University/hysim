@@ -1,10 +1,14 @@
-"""Adapted from: https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_sensors.html"""
+"""Sensors adapted from:
+https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_sensors.html"""
+
 from hysim.mitsuba.abc import *
 from hysim.mitsuba.films import Film
 from hysim.mitsuba.samplers import Sampler
 
 
 class Sensor(NamedMitsubaObject):
+    """Abstract base class for Mitsuba sensor objects"""
+
     near_clip: float = 0.01
     far_clip: float = 1e20
     to_world: Transform
@@ -25,7 +29,7 @@ class Sensor(NamedMitsubaObject):
             "fov": self.fov,
             "fov_axis": self.fov_axis,
             "sampler": self.sampler.asdict,
-            "to_world": self.to_world
+            "to_world": self.to_world,
         }
 
 

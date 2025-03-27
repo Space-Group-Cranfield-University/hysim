@@ -189,21 +189,78 @@ def run_sim(run_directory: str):
     )
     output.produce_output_data(user_inputs)
 
-def run_sim2(run_directory:str):
+
+def run_sim2(run_directory: str):
+    """Runs a single simulator case
+
+    The function is called by the entry script to run a
+    case. For a case the user input filed are parsed,
+    the orbit data is converted to LVLH, and the scene is
+    assembled. The scene is then rendered and the output
+    is converted to the format specified in the configs.
+
+    The run directory must be the root of the folders
+    containing all configuration files.
+
+    Parameters
+    ----------
+    run_directory : str
+        Path to the case directory containing configuration
+        files and user data.
+
+    """
+
+    logging.info("Running Simulation Case")
+
+    # ------------------------------- #
+    # Get user Inputs
+    # ------------------------------- #
+    logging.info("Getting user inputs from configuration files")
+
     config = Config(run_directory)
     kernel_paths = dh.get_kernel_paths()
+
     mi.set_variant(config.case.mitsuba_variant)
+
+    logging.info("Calculating scene geometry from orbit data")
     position_data = frames.ScenePositionData(config.mission, kernel_paths)
+
+    # ------------------------------- #
+    # Assemble Scene
+    # ------------------------------- #
+    logging.info("Building scene")
     scene_builder = sb.SceneBuilder(config, position_data)
+
     logging.debug(f"Chaser ECI Coordinates: {position_data.chaser_position}")
     logging.info("Relative distance to target: %0.2fm", position_data.relative_distance)
+
+    # ------------------------------- #
+    # Load to mitsuba and run
+    # ------------------------------- #
     scene_dict = scene_builder.scene.asdict
+    logging.debug("Final Scene Dictionary...")
     logging.debug(scene_dict)
+
     logging.info("Adding case directory search paths to mitsuba")
     fr = mi.Thread.thread().file_resolver()
     for path in config.directories:
         fr.append(path)
-    sim2 = mi.load_dict(scene_dict)
-    render = mi.render(sim2)
+        logging.debug("\t Added: " + path)
+
+    logging.info("Loading scene into Mitsuba")
+    sim = mi.load_dict(scene_dict)
+    logging.info("Scene assembled successfully")
+    logging.info("Running Mitsuba")
+
+    print("\n")
+    render = mi.render(sim)
+    print("\n")
+
+    logging.info("Render complete")
+    # ------------------------------- #
+    # Export Outputs
+    # ------------------------------- #
     output = output_data.OutputHandler2(render, scene_builder, config)
     output.export_data()
+
+    logging.info("Done")
