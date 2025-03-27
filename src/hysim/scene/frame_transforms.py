@@ -4,8 +4,6 @@ Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
 
-from typing import List, Union
-
 import numpy as np
 import numpy.typing as npt
 
@@ -23,8 +21,8 @@ Vector = npt.NDArray[np.float64]
 # TODO This is needed because you cannot type hint a function with a mitsuba type before
 # the variant has been set. (Alternative is to import this module midway through a function)
 if mi.variant() is None:
-    MVector = List[float]
-    MTransform = List[List[float]]
+    MVector = list[float]
+    MTransform = list[list[float]]
 else:
     MVector = mi.Vector3f
     MTransform = mi.ScalarTransform4f
@@ -347,7 +345,7 @@ class StateVectors:
 
 
 class ScenePositionData:
-    def __init__(self, mission_config: MissionConfig, kernel_paths: List[str]):
+    def __init__(self, mission_config: MissionConfig, kernel_paths: list[str]):
         spice.furnsh(kernel_paths)
         self._mission_config = mission_config
         self._epoch = spice.str2et(self._mission_config.datetime)

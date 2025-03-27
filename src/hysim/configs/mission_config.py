@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union, Literal
+from typing import Union, Literal
 
 from pydantic.dataclasses import dataclass
 
@@ -10,8 +10,8 @@ from hysim.configs.constants import ConfigType
 @dataclass(frozen=True)
 class Spacecraft:
     position_frame: str
-    position: List[str]
-    attitude: List[float]
+    position: list[str]
+    attitude: list[float]
 
 
 # class TargetSpacecraft(Spacecraft):
@@ -20,7 +20,7 @@ class Spacecraft:
 
 @dataclass(frozen=True)
 class ChaserSpacecraft(Spacecraft):
-    attitude: Union[List[float], Literal["lookat"]]
+    attitude: Union[list[float], Literal["lookat"]]
 
     @property
     def is_lookat(self) -> bool:

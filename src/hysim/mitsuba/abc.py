@@ -1,18 +1,18 @@
 import typing_extensions
 from abc import ABC, abstractmethod
-from typing import List, Any, Dict, Optional, Union, Iterable
+from typing import Any, Optional, Union, Iterable
 import mitsuba as mi
 
 # Type aliases
 if mi.variant() is None:
-    Transform = List[List[float]]
-    Vector = List[float]
+    Transform = list[list[float]]
+    Vector = list[float]
 else:
     # TODO: potentially replace with https://mitsuba.readthedocs.io/en/stable/src/key_topics/scene_format.html#transformations
     Transform = mi.ScalarTransform4f
     Vector = mi.Vector3f
 
-MDict = Dict[str, Any]
+MDict = dict[str, Any]
 
 
 class MitsubaObject(ABC):

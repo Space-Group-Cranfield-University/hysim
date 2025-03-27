@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict
-
 from pydantic.dataclasses import dataclass
 
 from hysim.configs.constants import ConfigType
@@ -15,7 +13,7 @@ class MaterialWrapper:
 
 class MaterialsConfig:
     file_type: ConfigType
-    materials: Dict[str, BSDFs]
+    materials: dict[str, BSDFs]
 
     def __init__(self, file_type: ConfigType):
         self.file_type = file_type

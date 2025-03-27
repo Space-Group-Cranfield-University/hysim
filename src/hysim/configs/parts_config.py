@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 from pydantic.dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional
 
 from hysim.configs.constants import ConfigType
 
@@ -25,7 +25,7 @@ class Part:
 
 class PartsConfig:
     file_type: ConfigType
-    parts: Dict[str, Part]
+    parts: dict[str, Part]
 
     def __init__(self, file_type: ConfigType):
         self.file_type = file_type

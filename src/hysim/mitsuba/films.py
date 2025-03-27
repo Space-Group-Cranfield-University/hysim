@@ -26,7 +26,7 @@ class Film(MitsubaObject):
 
 
 class SpectralFilm(Film):
-    spectra: List[Spectrum]
+    spectra: list[Spectrum]
 
     @property
     def asdict(self) -> MDict:

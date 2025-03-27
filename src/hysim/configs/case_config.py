@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic.dataclasses import dataclass
 
@@ -23,7 +23,7 @@ class Integrator:
 class OutputItem:
     format: OutputFormat
     file_name: str
-    reference_wavelengths: Optional[List[int]] = None
+    reference_wavelengths: Optional[list[int]] = None
 
 
 @dataclass(frozen=True)
@@ -32,4 +32,4 @@ class CaseConfig:
     mitsuba_variant: MitsubaVariant
     sampler: Sampler
     integrator: Integrator
-    output: List[OutputItem]
+    output: list[OutputItem]

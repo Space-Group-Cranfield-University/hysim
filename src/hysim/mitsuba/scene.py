@@ -12,9 +12,9 @@ class Scene(MitsubaObject):
     """
 
     _integrator: Integrator
-    _sensors: List[Sensor] = []
-    _emitters: List[Emitter] = []
-    _shapes: List[Shape] = []
+    _sensors: list[Sensor] = []
+    _emitters: list[Emitter] = []
+    _shapes: list[Shape] = []
 
     @property
     def asdict(self) -> MDict:

@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Literal, Set, Iterable
+from typing import Literal, Set, Iterable
 
 from rickle import BaseRickle
 
@@ -35,7 +35,7 @@ class Config:
         # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
         self._case_directory = case_directory
-        _case_files: Dict[str, str] = {}
+        _case_files: dict[str, str] = {}
         for root, _, files in os.walk(self._case_directory):
             for file in files:
                 if file.endswith(".yml"):
@@ -105,24 +105,24 @@ class Config:
         return self._sensor_config
 
     @property
-    def parts(self) -> Dict[str, Part]:
+    def parts(self) -> dict[str, Part]:
         """Configuration data for the target components
 
         Returns
         -------
-        Dict[str, Part]
+        dict[str, Part]
             A target dictionary of target components, where the key is the name of the
             component and the value is a Part class
         """
         return self._part_config.parts
 
     @property
-    def user_materials(self) -> Dict[str, BSDFs]:
+    def user_materials(self) -> dict[str, BSDFs]:
         """Dictionary of user defined materials
 
         Returns
         -------
-        Dict[str, BSDFs]
+        dict[str, BSDFs]
             A dictionary of user defined materials, where the key is the name of the
             material and the value is a BSDFs class
         """
