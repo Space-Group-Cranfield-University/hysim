@@ -9,9 +9,7 @@ import numpy.typing as npt
 
 import spiceypy as spice
 
-from strenum import StrEnum
-
-from hysim.configs.constants import ConfigType
+from hysim.configs.constants import PositionFormat
 from hysim.configs.mission_config import MissionConfig, Spacecraft
 import mitsuba as mi
 
@@ -257,12 +255,6 @@ def convert_eci_to_lvlh(state, transformation_matrix, origin):
     return np.matmul(transformation_matrix, np.transpose(Rr))
 
 
-class LocationFormat(StrEnum):
-    STATE = "state"
-    KEPLERIAN = "kep"
-    TLE = "tle"
-
-
 # class EnvironmentObject(StrEnum):
 #     EARTH = "earth"
 #     SUN = "sun"
@@ -313,21 +305,12 @@ class StateVectors:
         Vector
             Orbit state vectors
         """
-        if spacecraft.position_frame == LocationFormat.STATE:
+        if spacecraft.position_frame == PositionFormat.STATE:
             return np.array(spacecraft.position)
-        elif spacecraft.position_frame == LocationFormat.KEPLERIAN:
+        elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
             return convert_kepler_to_state_vectors(spacecraft.position, self._epoch)
-        elif spacecraft.position_frame == LocationFormat.TLE:
+        elif spacecraft.position_frame == PositionFormat.TLE:
             return convert_tle_to_state_vectors(spacecraft.position, self._epoch)
-        else:
-            raise ValueError(
-                "Invalid location format in "
-                + ConfigType.MISSION
-                + "\n Got: "
-                + spacecraft.position_frame
-                + "Expected one of: "
-                + str([e.value for e in LocationFormat])
-            )
 
     def _get_sun_location(self) -> Vector:
         """Get location of sun with respect to Earth at epoch

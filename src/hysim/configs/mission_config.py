@@ -4,12 +4,12 @@ from typing import Union, Literal
 
 from pydantic.dataclasses import dataclass
 
-from hysim.configs.constants import ConfigType
+from hysim.configs.constants import ConfigType, PositionFormat
 
 
 @dataclass(frozen=True)
 class Spacecraft:
-    position_frame: str
+    position_frame: PositionFormat
     position: list[str]
     attitude: list[float]
 

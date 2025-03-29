@@ -16,8 +16,6 @@ MitsubaVariant = StrEnum(
     "MitsubaVariant", {str(variant).upper(): str(variant) for variant in mi.variants()}
 )
 
-# class SamplerType(StrEnum): load from hysim.mitsuba.samplers etc
-
 
 class ImagingMode(StrEnum):
     """A spectrum of film sensitivity (quantum efficiency)"""
@@ -40,3 +38,9 @@ class OutputFormat(StrEnum):
     EXR = "exr"
     PNG = "png"
     CSV = "csv"
+
+
+class PositionFormat(StrEnum):
+    STATE = "state"
+    KEPLERIAN = "kep"
+    TLE = "tle"
