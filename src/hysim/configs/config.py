@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import Literal, Set, Iterable
+from typing import Literal, Set, Iterable, Type, Any, Union
 
 from pydantic import ValidationError
 from rickle import BaseRickle
@@ -8,15 +7,14 @@ import logging
 
 from hysim.configs.case_config import CaseConfig
 from hysim.configs.constants import ConfigType, ImagingMode, OutputFormat
-from hysim.configs.materials_config import MaterialsConfig, MaterialWrapper
+from hysim.configs.materials_config import MaterialsConfig
 from hysim.configs.mission_config import MissionConfig
 from hysim.configs.sensor_config import SensorConfig
 from hysim.configs.parts_config import PartsConfig, Part
 from hysim.mitsuba.bsdfs import BSDFs
 
 
-def _log_config_error(file_type: str, location: str, message: str, path: str,
-                      value: str):
+def _log_config_error(file_type: str, location: str, message: str, path: str, value: str):
     """Logs a configuration error message
 
     Parameters
@@ -46,11 +44,14 @@ class Config:
     are loaded and placed into their corresponding class.
     """
 
-    _case_config: CaseConfig
-    _mission_config: MissionConfig
-    _sensor_config: SensorConfig
-    _part_config: PartsConfig
-    _materials_config: MaterialsConfig
+    # The values in this dict start as the config class type, but are replaced with the class instance during _init_configs
+    _configs: dict[ConfigType, Union[Type, Any]] = {
+        ConfigType.CASE: CaseConfig,
+        ConfigType.MISSION: MissionConfig,
+        ConfigType.SENSOR: SensorConfig,
+        ConfigType.PARTS: PartsConfig,
+        ConfigType.MATERIAL: MaterialsConfig,
+    }
 
     _case_directory: str
     _directories: Set[str] = set()
@@ -73,62 +74,50 @@ class Config:
                 _case_files[path.name] = str(path)
                 self._directories.add(str(path.parent))
 
-        self._sensor_spectrum_path = _case_files[self._sensor_config.spectrum_file]
+        self._sensor_spectrum_path = _case_files[
+            self._configs[ConfigType.SENSOR].spectrum_file
+        ]
         self._directories.add(str(case_directory))
 
-        if self._sensor_config.imaging_mode == ImagingMode.MULTISPECTRAL:
-            for i, output in enumerate(self._case_config.output):
-                if output.format == OutputFormat.EXR and output.reference_wavelengths is None:
-                    _log_config_error(ConfigType.CASE,
-                                      f"output[{i}].reference_wavelengths",
-                                      "Reference wavelengths are required for multispectral imaging",
-                                      "TODO:",  # TODO: Get path to case config file
-                                      "None")
+        if self._configs[ConfigType.SENSOR].imaging_mode == ImagingMode.MULTISPECTRAL:
+            for i, output in enumerate(self._configs[ConfigType.CASE].output):
+                if (
+                    output.format == OutputFormat.EXR
+                    and output.reference_wavelengths is None
+                ):
+                    _log_config_error(
+                        ConfigType.CASE,
+                        f"output[{i}].reference_wavelengths",
+                        "Reference wavelengths are required for multispectral imaging",
+                        "TODO:",  # TODO: Get path to case config file
+                        "None",
+                    )
                     self._has_error = True
                     break
 
         if self._has_error:
             logging.shutdown()
             import sys
+
             sys.exit()
 
-    def _init_configs(self, path: str) -> None:
+    def _init_configs(self, path: str):
         rickle = BaseRickle(path)
         file_type = rickle[self._file_type_ltr]
 
         try:
-            if file_type == ConfigType.CASE:
-                self._case_config = CaseConfig(**rickle.dict())
-
-            elif file_type == ConfigType.MISSION:
-                self._mission_config = MissionConfig(**rickle.dict())
-
-            elif file_type == ConfigType.SENSOR:
-                self._sensor_config = SensorConfig(**rickle.dict())
-
-            elif file_type == ConfigType.PARTS:
-                self._part_config = PartsConfig(file_type)
-                for part_name, part_dict in rickle.dict()["components"].items():
-                    self._part_config.parts[part_name] = Part(**part_dict)
-
-            elif file_type == ConfigType.MATERIAL:
-                self._materials_config = MaterialsConfig(file_type)
-                for material_name, material_dict in rickle.dict()["materials"].items():
-                    self._materials_config.materials[material_name] = MaterialWrapper(
-                        **material_dict
-                    ).material
-            else:
-                self._has_error = True
-                logging.error(f"{file_type} is an invalid config type at {path}")
-                
+            self._configs[file_type] = self._configs[file_type](**rickle.dict())
         except ValidationError as e:
             for error in e.errors():
                 message = error["msg"]
                 location = ".".join(map(str, error["loc"]))
                 value = error["input"]
-
                 _log_config_error(file_type, location, message, path, value)
             self._has_error = True
+        except KeyError:
+            logging.error(f'"{file_type}" is an invalid config type at "{path}"')
+            self._has_error = True
+            pass
 
     @property
     def case_directory(self) -> str:
@@ -148,17 +137,17 @@ class Config:
     @property
     def case(self) -> CaseConfig:
         """Configuration data for the simulation case"""
-        return self._case_config
+        return self._configs[ConfigType.CASE]
 
     @property
     def mission(self) -> MissionConfig:
         """Configuration data for the mission parameters"""
-        return self._mission_config
+        return self._configs[ConfigType.MISSION]
 
     @property
     def sensor(self) -> SensorConfig:
         """Configuration data for the HSI/MSI sensor"""
-        return self._sensor_config
+        return self._configs[ConfigType.SENSOR]
 
     @property
     def parts(self) -> dict[str, Part]:
@@ -170,7 +159,7 @@ class Config:
             A target dictionary of target components, where the key is the name of the
             component and the value is a Part class
         """
-        return self._part_config.parts
+        return self._configs[ConfigType.PARTS].components
 
     @property
     def user_materials(self) -> dict[str, BSDFs]:
@@ -182,4 +171,4 @@ class Config:
             A dictionary of user defined materials, where the key is the name of the
             material and the value is a BSDFs class
         """
-        return self._materials_config.materials
+        return self._configs[ConfigType.MATERIAL].materials
