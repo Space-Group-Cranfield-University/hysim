@@ -26,8 +26,7 @@ def run_case(run_directory: str):
         import sys
         sys.exit()
 
-    #sim.run_sim(case_directory)
-    sim.run_sim2(case_directory)
+    sim.run_sim(case_directory)
 
 
 # == CLI ARGUMENTS == #

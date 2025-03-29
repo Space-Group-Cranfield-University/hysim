@@ -4,7 +4,7 @@ import logging
 from hysim.configs.config import Config
 from hysim.configs.constants import ImagingMode
 
-from hysim.scene.frame_transforms import ScenePositionData
+from hysim.frame_transforms import ScenePositionData
 from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (

@@ -4,12 +4,10 @@ Contains Database Enums to define data paths and functions to
 handle data retrieval.
 """
 import functools
-import os
 from importlib import resources
 from enum import Enum
 
 from strenum import StrEnum
-from pathlib import Path
 
 import json
 
@@ -59,34 +57,6 @@ class EarthData(StrEnum):
     OCEAN_SPECTRUM = "ocean.spd"
     MESH = "earth.ply"
     SURFACE_BITMAP = "earth.jpg"
-
-
-def get_user_data_path(filename):
-    """Gets data paths of file in run directory
-
-    Walks through working directory to retrieve file
-    path
-
-    Parameters
-    ----------
-    filename : str
-        Name of the file to search for
-
-    Returns
-    -------
-    str
-        Path to file
-    """
-
-    # TODO: this should be case directory relative
-    for root, _, files in os.walk(Path.cwd()):
-        for file in files:
-            if file == filename:
-                return os.path.join(root, file).replace("\\", "/")
-
-    # raise DataFileNotFoundError(
-    #     f"{filename} cannot be found in the case directory"
-    # )
 
 
 def get_kernel_paths():
@@ -144,37 +114,11 @@ def load_material_database() -> dict[str, TwoSidedBRDF]:
     return materials
 
 
-def get_database_material(material_name: str):
+def get_database_material(material_name: str) -> TwoSidedBRDF:
     """Retrieves material dictionary from database"""
     return load_material_database()[material_name]
 
-def get_material_from_database(material_name):
-    """Retrieves material dictionary from database
-
-    Parameters
-    ----------
-    material_name : str
-        Name of material in database
-
-    Returns
-    -------
-    dict
-        Material dictionary
-    """
-    materials_data = read_json_package_data(
-        MaterialsData.PATH.value, MaterialsData.MATERIALS_FILE.value
-    )
-    material_dict = materials_data[material_name]
-
-    if material_dict["material"]["type"] == "diffuse":
-        filename = material_dict["material"]["reflectance"]["filename"]
-        file_path = get_data_path(MaterialsData.PATH.value, filename)
-        material_dict["material"]["reflectance"]["filename"] = str(file_path)
-
-    return material_dict
-
-
-def get_data_path(directory: str, file: str):
+def get_data_path(directory: str, file: str) -> str:
     """Get unix style path of data
 
     Parameters
@@ -187,10 +131,10 @@ def get_data_path(directory: str, file: str):
     Returns
     -------
     str
-        Unix style path to data
+        Path to data
     """
     with resources.path(directory, file) as path:
-        return str(path).replace("\\", "/")
+        return str(path)
 
 
 def get_earth_mesh_path() -> str:
@@ -201,19 +145,6 @@ def get_ocean_spectrum_path() -> str:
 
 def get_sun_spectrum_path() -> str:
     return get_data_path(LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM)
-
-# def get_sunlight_spectrum():
-#     """Get path to sunlight spectrum data
-#
-#     Returns
-#     -------
-#     str
-#         Path to sunlight data
-#     """
-#     return get_data_path(
-#         LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM
-#     )
-#
 
 def list_defined_materials():
     """Returns list of materials inside material database
