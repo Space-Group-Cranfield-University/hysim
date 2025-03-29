@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Literal, Set, Iterable
 
 from pydantic import ValidationError
@@ -57,33 +58,34 @@ class Config:
 
     _has_error: bool = False
 
-    def __init__(self, case_directory: str) -> None:
+    def __init__(self, case_directory: Path) -> None:
         # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
-        self._case_directory = case_directory
+        self._case_directory = str(case_directory)
         _case_files: dict[str, str] = {}
-        for root, _, files in os.walk(self._case_directory):
-            for file in files:
-                if file.endswith(".yml"):
-                    path = os.path.join(root, file).replace("\\", "/")
-                    self._init_configs(path)
-                elif file.endswith((".spd", ".ply")):
-                    _case_files[file] = os.path.join(root, file).replace("\\", "/")
-                    self._directories.add(root.replace("\\", "/"))
+
+        yaml_ext = {".yml", ".yaml"}
+        content_ext = {".spd", ".ply"}
+        for path in case_directory.rglob("*"):
+            if path.suffix in yaml_ext:
+                self._init_configs(str(path))
+            elif path.suffix in content_ext:
+                _case_files[path.name] = str(path)
+                self._directories.add(str(path.parent))
+
         self._sensor_spectrum_path = _case_files[self._sensor_config.spectrum_file]
-        self._directories.add(case_directory)
+        self._directories.add(str(case_directory))
 
         if self._sensor_config.imaging_mode == ImagingMode.MULTISPECTRAL:
             for i, output in enumerate(self._case_config.output):
-                if output.format == OutputFormat.EXR:
-                    if output.reference_wavelengths is None:
-                        _log_config_error(ConfigType.CASE,
-                                          f"output[{i}].reference_wavelengths",
-                                          "Reference wavelengths are required for multispectral imaging",
-                                          "TODO:",  # TODO: Get path to case config file
-                                          "None")
-                        self._has_error = True
-                        break
+                if output.format == OutputFormat.EXR and output.reference_wavelengths is None:
+                    _log_config_error(ConfigType.CASE,
+                                      f"output[{i}].reference_wavelengths",
+                                      "Reference wavelengths are required for multispectral imaging",
+                                      "TODO:",  # TODO: Get path to case config file
+                                      "None")
+                    self._has_error = True
+                    break
 
         if self._has_error:
             logging.shutdown()

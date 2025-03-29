@@ -15,11 +15,6 @@ def get_package_version(package: str) -> str:
     version = pkg_resources.get_distribution(package).version
     return f"{package} {version}"
 
-
-def return_unix_path_string(path):
-    return str(path).replace("\\", "/")
-
-
 def run_case(run_directory: str):
     case_directory = Path(run_directory)
 
@@ -28,10 +23,8 @@ def run_case(run_directory: str):
 
     if case_directory.exists() is False:
         logging.error("Invalid path to case directory. Terminating Hysim")
-        exit()
-        
-    case_directory = return_unix_path_string(case_directory)
-    logging.info(f"Case Directory: {case_directory}") 
+        import sys
+        sys.exit()
 
     #sim.run_sim(case_directory)
     sim.run_sim2(case_directory)

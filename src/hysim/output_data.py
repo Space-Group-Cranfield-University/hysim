@@ -7,6 +7,7 @@ the simulator.
 import os
 import logging
 from itertools import tee
+from pathlib import Path
 from typing import Final, Callable
 
 import mitsuba as mi
@@ -277,7 +278,7 @@ class OutputHandler2:
         self._render_data = render_data
         self._config = config
         self._scene_builder = scene_builder
-        self._case_directory = config.case_directory
+        self._case_directory = Path(config.case_directory)
         self._log_prefix: Final[str] = "Exporting results as"
         self._format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
             OutputFormat.EXR: self._export_as_exr,
@@ -285,19 +286,16 @@ class OutputHandler2:
             OutputFormat.CSV: self._export_as_csv,
         }
 
-    @staticmethod
-    def _create_directory(directory: str) -> bool:
-        """Returns true if a directory was created"""
-        if not os.path.isdir(directory):
-            os.mkdir(directory)
-            return True
-        return False
-
-    def _create_output_directory(self, directory: str, output_format: OutputFormat):
-        if not self._create_directory(directory):
+    def _create_output_directory(self, output_item: OutputItem) -> Path:
+        result_dir = self._case_directory / output_item.file_name
+        if result_dir.is_dir():
             logging.debug(
-                f"The directory {directory}  already exists. The {output_format} files inside may be overwritten."
+                f"The directory \"{result_dir}\" already exists. The .{output_item.format} files inside may be overwritten."
             )
+        else:
+            result_dir.mkdir(parents=True, exist_ok=True)
+        return result_dir
+
 
     @staticmethod
     def _create_channel_names(wavelengths: list[float]) -> list[str]:
@@ -354,46 +352,42 @@ class OutputHandler2:
         if not file_name.endswith(exr):
             file_name += exr
 
-        results_dir = os.path.dirname(file_name)
-        if results_dir is not None:
-            self._create_directory(results_dir)
+        file_path = self._case_directory / file_name
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if os.path.isfile(file_name):
-            logging.info(f"A {exr} file already exists. Overwriting...")
+        if file_path.is_file():
+            logging.info(f"The file \"{file_path}\" already exists. Overwriting...")
 
-        mi.util.write_bitmap(file_name, result_bmp)
+        mi.util.write_bitmap(str(file_path), result_bmp)
 
     def _export_as_png(self, output_item: OutputItem):
         logging.info(f"{self._log_prefix} .{output_item.format} files")
 
         # output_item.file_name is actually a directory here
-        self._create_output_directory(output_item.file_name, OutputFormat.PNG)
+        results_dir = self._create_output_directory(output_item)
 
         for i in range(len(self._render_data[0, 0, :])):
-            band_name = f"Band_{i}.png"
             results_array = np.array(self._render_data[:, :, i])
             iio.imwrite(
-                f"{output_item.file_name}/{band_name}",
+                results_dir / f"Band_{i}.png",
                 # np.interp(
                 #      results_array,
                 #      (results_array.min(), results_array.max()),
                 #      (0, 255)),
                 (results_array).astype(np.uint8),
                 # prefer_uint8=False
-            )
+                )
 
     def _export_as_csv(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix} .{OutputFormat.CSV} files")
+        logging.info(f"{self._log_prefix} .{output_item.format} files")
 
         # output_item.file_name is actually a directory here
-        self._create_output_directory(output_item.file_name, OutputFormat.CSV)
+        results_dir = self._create_output_directory(output_item)
 
-        # output_item.file_name is actually a directory here
         for i in range(len(self._render_data[0, 0, :])):
-            band_name = f"Band_{i}.csv"
             results_array = np.array(self._render_data[:, :, i])
             np.savetxt(
-                f"{output_item.file_name}/{band_name}", results_array, delimiter=","
+                results_dir / f"Band_{i}.csv", results_array, delimiter=","
             )
 
     def export_data(self):

@@ -8,6 +8,7 @@ handle Mitsuba.
 
 # Logging
 import logging
+from pathlib import Path
 
 # Packages
 import mitsuba as mi
@@ -204,7 +205,7 @@ def _set_mitsuba_logger():
     del mitsuba_logger
 
 
-def run_sim2(run_directory: str):
+def run_sim2(run_directory: Path):
     """Runs a single simulator case
 
     The function is called by the entry script to run a
@@ -223,8 +224,7 @@ def run_sim2(run_directory: str):
         files and user data.
 
     """
-
-    logging.info("Running Simulation Case")
+    logging.info(f"Running Simulation Case @ \"{run_directory}\"");
 
     # ------------------------------- #
     # Get user Inputs
