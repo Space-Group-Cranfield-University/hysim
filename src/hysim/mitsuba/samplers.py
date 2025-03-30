@@ -1,40 +1,48 @@
 """Samplers adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_samplers.html"""
 
+from typing import Literal
+
+from pydantic.dataclasses import dataclass
+
 from hysim.mitsuba.abc import *
 
-
+@dataclass
 class Sampler(MitsubaObject):
     sample_count: int
+    type: str
 
-    @property
-    @abstractmethod
-    def asdict(self) -> MDict:
+    def _asdict(self) -> MDict:
         return {
-            "type": None,
+            "type": self.type,
             "sample_count": self.sample_count,
         }
 
-
+@dataclass
 class StratifiedSampler(Sampler):
+    type: Literal["stratified"] = "stratified"
+
     @property
     def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "stratified"
-        return d
+        return self._asdict()
 
 
+@dataclass
 class IndependentSampler(Sampler):
+    type: Literal["independent"] = "independent"
+
     @property
     def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "independent"
-        return d
+        return self._asdict()
 
 
+@dataclass
 class MultiJitterSampler(Sampler):
+    type: Literal["multijitter"] = "multijitter"
+
     @property
     def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "multijitter"
-        return d
+        return self._asdict()
+
+
+Samplers = Union[StratifiedSampler, IndependentSampler, MultiJitterSampler]

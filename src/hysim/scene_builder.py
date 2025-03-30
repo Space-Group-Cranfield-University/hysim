@@ -111,9 +111,7 @@ class SceneBuilder:
         self._build_target(config, position_data)
 
     def _build_integrator(self, config: Config):
-        integrator = integrators.PathTracer()
-        integrator.max_depth = config.case.integrator.max_depth
-        self._scene.set_integrator(integrator)
+        self._scene.set_integrator(config.case.integrator)
 
     def _build_earth(self, position_data: ScenePositionData):
         earth = shapes.PlyMesh()
@@ -135,9 +133,6 @@ class SceneBuilder:
     def _build_chaser(self, config: Config, position_data: ScenePositionData):
 
         # TODO: Add option to choose between internal sensor data, user
-        sampler = samplers.StratifiedSampler()
-        sampler.sample_count = config.case.sampler.sample_count
-
         film = films.SpectralFilm()
         film.height = config.sensor.film.height
         film.width = config.sensor.film.width
@@ -148,7 +143,7 @@ class SceneBuilder:
 
         chaser = sensors.PerspectiveCamera()
         chaser.name = "chaser_sensor"
-        chaser.sampler = sampler
+        chaser.sampler = config.case.sampler
         chaser.film = film
         chaser.fov = config.sensor.camera.field_of_view
         chaser.to_world = position_data.chaser_transform
