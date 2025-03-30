@@ -13,6 +13,11 @@ from hysim.configs.sensor_config import SensorConfig
 from hysim.configs.parts_config import PartsConfig, Part
 from hysim.mitsuba.bsdfs import BSDFs
 
+def _exit_on_error():
+    logging.info("Invalid configuration file. Exiting...")
+    logging.shutdown()
+    import sys
+    sys.exit()
 
 def _log_config_error(file_type: str, location: str, message: str, path: str, value: str):
     """Logs a configuration error message
@@ -79,10 +84,10 @@ class Config:
         ]
         self._directories.add(str(case_directory))
 
+
         if self._configs[ConfigType.SENSOR].imaging_mode == ImagingMode.MULTISPECTRAL:
             for i, output in enumerate(self._configs[ConfigType.CASE].output):
-                if (
-                    output.format == OutputFormat.EXR
+                if (output.format == OutputFormat.EXR
                     and output.reference_wavelengths is None
                 ):
                     _log_config_error(
@@ -92,14 +97,8 @@ class Config:
                         "TODO:",  # TODO: Get path to case config file
                         "None",
                     )
-                    self._has_error = True
+                    _exit_on_error()
                     break
-
-        if self._has_error:
-            logging.shutdown()
-            import sys
-
-            sys.exit()
 
     def _init_configs(self, path: str):
         rickle = BaseRickle(path)
@@ -113,11 +112,10 @@ class Config:
                 location = ".".join(map(str, error["loc"]))
                 value = error["input"]
                 _log_config_error(file_type, location, message, path, value)
-            self._has_error = True
+            _exit_on_error()
         except KeyError:
             logging.error(f'"{file_type}" is an invalid config type at "{path}"')
-            self._has_error = True
-            pass
+            _exit_on_error()
 
     @property
     def case_directory(self) -> str:
