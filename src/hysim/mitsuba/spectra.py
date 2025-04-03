@@ -1,48 +1,41 @@
 """Spectra adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_spectra.html"""
+from typing import Literal, Union, Any
 
-from hysim.mitsuba.abc import *
-from pydantic.dataclasses import dataclass
+from pydantic import field_serializer, field_validator
+
+from hysim.mitsuba.abc import MitsubaObject
 
 
-@dataclass
-class Spectrum(NamedMitsubaObject):
+class Spectrum(MitsubaObject):
     """Abstract base class for Mitsuba spectrum objects"""
 
     pass
 
 
-@dataclass
 class IrregularSpectrum(Spectrum):
+    type: Literal["irregular"] = "irregular"
     wavelengths: list[float]
     values: list[float]
 
-    @property
-    def asdict(self) -> MDict:
-        return {
-            "type": "irregular",
-            "wavelengths": self._iterable_to_string(self.wavelengths),
-            "values": self._iterable_to_string(self.values),
-        }
+    @field_validator("wavelengths", "values", mode="before")
+    @classmethod
+    def _string_to_list(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return list(map(float, value.split(",")))
+        return value
 
-    @staticmethod
-    def _iterable_to_string(values: Iterable[float]) -> str:
+    @field_serializer("wavelengths", "values")
+    def _list_to_string(self, values: list[float]) -> str:
         """Used to match mitsuba format.
         See https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_spectra.html#irregular-spectrum-irregular
         """
         return ", ".join(map(str, values))
 
 
-@dataclass
 class SpdSpectrum(Spectrum):
+    type: Literal["spectrum"] = "spectrum"
     filename: str
-
-    @property
-    def asdict(self) -> MDict:
-        return {
-            "type": "spectrum",
-            "filename": self.filename,
-        }
 
 
 Spectra = Union[IrregularSpectrum, SpdSpectrum]  # create_type_alias(Spectrum)

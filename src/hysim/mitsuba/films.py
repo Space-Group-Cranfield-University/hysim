@@ -1,10 +1,10 @@
 """Films adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_films.html
 """
+from typing import Literal, Iterable, Union
 
-from hysim.mitsuba.abc import *
-from hysim.mitsuba.abc import _iterate_named_objects
-from hysim.mitsuba.spectra import Spectrum
+from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin
+from hysim.mitsuba.spectra import Spectra
 
 
 class Film(MitsubaObject):
@@ -14,31 +14,17 @@ class Film(MitsubaObject):
     height: int
     component_format: str = "float32"
 
-    @property
-    @abstractmethod
-    def asdict(self) -> MDict:
-        return {
-            "type": None,
-            "width": self.width,
-            "height": self.height,
-            "component_format": self.component_format,
-        }
 
+class SpectralFilm(Film, NamedObjectsMixin[Spectra]):
+    type: Literal["specfilm"] = "specfilm"
 
-class SpectralFilm(Film):
-    spectra: list[Spectrum]
+    def set_spectrum(self, spectra: Iterable[tuple[str, Spectra]]):
+        for name, spectrum in spectra:
+            self._add_item(name, spectrum)
 
-    @property
-    def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "specfilm"
-        _iterate_named_objects(d, self.spectra, "band")
-        return d
 
 class HDRFilm(Film):
+    type: Literal["hdrfilm"] = "hdrfilm"
 
-    @property
-    def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "hdrfilm"
-        return d
+
+Films = Union[SpectralFilm, HDRFilm]

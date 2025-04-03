@@ -1,56 +1,33 @@
 """Sensors adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_sensors.html"""
+from typing import Union, Literal
 
-from hysim.mitsuba.abc import *
-from hysim.mitsuba.films import Film
-from hysim.mitsuba.samplers import Sampler
+from hysim.mitsuba.abc import MitsubaObject, Transform
+from hysim.mitsuba.films import Films
+from hysim.mitsuba.samplers import Samplers
 
 
-class Sensor(NamedMitsubaObject):
+class Sensor(MitsubaObject):
     """Abstract base class for Mitsuba sensor objects"""
 
     near_clip: float = 0.01
     far_clip: float = 1e20
     to_world: Transform
-    film: Film
+    film: Films
     fov: float
     fov_axis: str = "x"
-    sampler: Sampler
-
-    @property
-    @abstractmethod
-    def asdict(self) -> MDict:
-        """Builds the sensor dictionary"""
-        return {
-            "type": None,
-            "far_clip": self.far_clip,
-            "near_clip": self.near_clip,
-            "film": self.film.asdict,
-            "fov": self.fov,
-            "fov_axis": self.fov_axis,
-            "sampler": self.sampler.asdict,
-            "to_world": self.to_world,
-        }
+    sampler: Samplers
 
 
 class ThinLensCamera(Sensor):
+    type: Literal["thinlens"] = "thinlens"
     focal_distance: float
     focus_distance: float
     aperture_radius: float
 
-    @property
-    def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "thinlens"
-        d["focal_distance"] = self.focal_distance
-        d["focus_distance"] = self.focus_distance
-        d["aperture_radius"] = self.aperture_radius
-        return d
-
 
 class PerspectiveCamera(Sensor):
-    @property
-    def asdict(self) -> MDict:
-        d = super().asdict
-        d["type"] = "perspective"
-        return d
+    type: Literal["perspective"] = "perspective"
+
+
+Sensors = Union[ThinLensCamera, PerspectiveCamera]

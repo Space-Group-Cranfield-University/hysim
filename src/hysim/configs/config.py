@@ -70,7 +70,7 @@ class Config:
         self._case_directory = str(case_directory)
         _case_files: dict[str, str] = {}
 
-        yaml_ext = {".yml", ".yaml"}
+        yaml_ext = {".yml", ".yaml" ".json", ".toml"}
         content_ext = {".spd", ".ply"}
         for path in case_directory.rglob("*"):
             if path.suffix in yaml_ext:

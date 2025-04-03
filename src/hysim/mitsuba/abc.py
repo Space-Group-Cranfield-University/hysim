@@ -1,79 +1,64 @@
-import typing_extensions
-from abc import ABC, abstractmethod
-from typing import Any, Optional, Union, Iterable
+from typing import TypeVar, Literal, Annotated, Generic, Any
 import mitsuba as mi
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 # Type aliases
 if mi.variant() is None:
-    Transform = list[list[float]]
-    Vector = list[float]
+    try:
+        from mitsuba.scalar_rgb import ScalarTransform4f as Transform, Vector3f as Vector
+    except ImportError:
+        import importlib
+
+        _mitsuba = importlib.import_module("mitsuba." + mi.variants()[0])
+        Transform = _mitsuba.ScalarTransform4f
+        Vector = _mitsuba.Vector3f
 else:
-    # TODO: potentially replace with https://mitsuba.readthedocs.io/en/stable/src/key_topics/scene_format.html#transformations
     Transform = mi.ScalarTransform4f
     Vector = mi.Vector3f
 
-MDict = dict[str, Any]
+Discriminator = Field(discriminator="type")
 
-
-class MitsubaObject(ABC):
+# Need to enforce abstract class without an abstract method implementation
+class MitsubaObject(BaseModel):
     """Abstract base class for Mitsuba objects"""
 
-    # TODO: add type:str field to allow for more accurate type checking when using pydantic
-    # and Union (pydantic will check the type field which will be a literal on concrete implementations)
-    # e.g type: Literal[str] = "diffuse" for the DiffuseMaterial
+    type: Literal[""]
 
-    # mitsuba_dict: MDict
+    @field_validator("to_world", "direction", mode="plain", check_fields=False)
+    @classmethod
+    def ignore_mitsuba_types(cls, v):
+        return v
 
-    @property
-    @abstractmethod
-    def asdict(self) -> MDict:
-        """Returns the object as a dict for use with Mitsuba"""
-        raise NotImplementedError
+    def asdict(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
 
 
-class NamedMitsubaObject(MitsubaObject):
-    name: Optional[str] = None
-
-
-def _iterate_named_objects(
-    d: MDict, objects: Iterable[NamedMitsubaObject], default_prefix: str
-):
-    """
-    Iterates over a collection of potential named mitsuba objects and adds them to the dictionary
-    Parameters
-    ----------
-    d : MDict
-        The dictionary to add the objects to.
-    objects : Iterable[NamedMitsubaObject]
-        The collection of objects to iterate.
-    default_prefix : str
-        The default prefix to use for the object if it does not have a name.
-    """
-    for i, obj in enumerate(objects):
-        if obj.name:
-            d[obj.name] = obj.asdict
-        else:
-            d[f"{default_prefix}_{i}"] = obj.asdict
-
-
-def _get_subclasses(cls: type) -> typing_extensions.TypeAlias:
-    return Union[tuple(cls.__subclasses__())]
-
-
-# class IPositionedMitsubaObject(Protocol):
-#     to_world: mi.ScalarTransform4f
-
-
+# def _get_subclasses(cls: type) -> typing_extensions.TypeAlias:
+#     return Union[tuple(cls.__subclasses__())]
+# class _IPositioned(Protocol):
+#     to_world:  Transform
 # class HasFileName(Protocol):
 #     filename: str
 
-
 # TODO: move all abstract classes to abc.py
-# Also could implement a factory pattern for creating objects
 
-# Alternatively instead of using classes, could have the user/builder set the
-# type of object themselves e.g.
-# sensor = Sensor()
-# sensor.type = "perspective"
-# sensor.fov = 45
-# sensor.film = Film()
+# Named mitsuba objects are: Sensors, Emitters, BSDFs, Shapes and Spectra types.
+_NamedMitsubaObject = TypeVar("_NamedMitsubaObject", bound=MitsubaObject)
+
+
+class NamedObjectsMixin(BaseModel, Generic[_NamedMitsubaObject]):
+    """Mixin class for Mitsuba objects that have named objects
+    to easily apply them to the object in question"""
+
+    model_config = ConfigDict(extra="allow")
+    __pydantic_extra__: dict[str, Annotated[_NamedMitsubaObject, Discriminator]] = {}
+
+    # Need to better support if the name is already used,
+    def _add_item(self, name: str, item: _NamedMitsubaObject):
+        if name is None:
+            raise AttributeError(f"\"name\" cannot be None")
+        if not isinstance(name, str):
+            raise TypeError(f"\"name\" must be a string, not {type(name)}")
+        if not isinstance(item, MitsubaObject):
+            raise TypeError(f"\"item\" must be a MitsubaObject, not {type(item)}")
+        setattr(self, name, item)

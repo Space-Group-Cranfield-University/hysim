@@ -11,19 +11,12 @@ import spiceypy as spice
 
 from hysim.configs.constants import PositionFormat
 from hysim.configs.mission_config import MissionConfig, Spacecraft
+from hysim.mitsuba.abc import Vector as MVector, Transform as MTransform
 import mitsuba as mi
 
 
 # Types
-Vector = npt.NDArray[np.float64]
-# TODO: This is needed because you cannot type hint a function with a mitsuba type before
-# the variant has been set. (Alternative is to import this module midway through a function)
-if mi.variant() is None:
-    MVector = list[float]
-    MTransform = list[list[float]]
-else:
-    MVector = mi.Vector3f
-    MTransform = mi.ScalarTransform4f
+NVector = npt.NDArray[np.float64]
 
 # Constants
 MU_EARTH = 3.986004418e5
@@ -91,7 +84,7 @@ def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) ->
     return semi_major_axis * np.abs(1 - eccentricity)
 
 
-def convert_kepler_to_state_vectors(elements: list, epoch: float) -> Vector:
+def convert_kepler_to_state_vectors(elements: list, epoch: float) -> NVector:
     """Performs calculations to convert keplerian elements to state
     in ECI.
 
@@ -155,7 +148,7 @@ def check_for_null(tle_data: list) -> float:
     return tle_data
 
 
-def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> Vector:
+def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> NVector:
     """Converts two line element set to state vectors in ECI
 
     Parameters
@@ -280,10 +273,10 @@ class StateVectors:
     """
 
     _epoch: float
-    earth: Vector = np.zeros(6, dtype=np.float64)
-    sun: Vector
-    target: Vector
-    chaser: Vector
+    earth: NVector = np.zeros(6, dtype=np.float64)
+    sun: NVector
+    target: NVector
+    chaser: NVector
 
     def __init__(self, mission_config: MissionConfig, epoch: float):
         self._epoch = epoch
@@ -291,7 +284,7 @@ class StateVectors:
         self.target = self._convert_input(mission_config.target)
         self.sun = self._get_sun_location()
 
-    def _convert_input(self, spacecraft: Spacecraft) -> Vector:
+    def _convert_input(self, spacecraft: Spacecraft) -> NVector:
         """Converts orbit defined in mission configs file to
         orbit state vectors
 
@@ -312,7 +305,7 @@ class StateVectors:
         elif spacecraft.position_frame == PositionFormat.TLE:
             return convert_tle_to_state_vectors(spacecraft.position, self._epoch)
 
-    def _get_sun_location(self) -> Vector:
+    def _get_sun_location(self) -> NVector:
         """Get location of sun with respect to Earth at epoch
 
         Returns
@@ -346,7 +339,7 @@ class ScenePositionData:
         sun_position = self._convert_eci_to_lvlh(self._state_vectors.sun)
         self._sun_direction_vector = -sun_position / np.linalg.norm(sun_position)
 
-    def _convert_eci_to_lvlh(self, state_vector: Vector) -> Vector:
+    def _convert_eci_to_lvlh(self, state_vector: NVector) -> NVector:
         return convert_eci_to_lvlh(
             state_vector, self._local_frame_transform, self._state_vectors.target[:3]
         )
@@ -356,7 +349,7 @@ class ScenePositionData:
     #     return self._earth_position
 
     @property
-    def chaser_position(self) -> Vector:
+    def chaser_position(self) -> NVector:
         """Returns chaser position in target centered LVLH
 
         Returns
@@ -375,11 +368,11 @@ class ScenePositionData:
         MVector
             Sun direction vector
         """
-        return self._sun_direction_vector
+        return MVector(self._sun_direction_vector)
 
     @classmethod
     def _get_spacecraft_transform(
-        cls, position: Vector, attitude: list[float]
+        cls, position: NVector, attitude: list[float]
     ) -> MTransform:
         return (
             mi.ScalarTransform4f()

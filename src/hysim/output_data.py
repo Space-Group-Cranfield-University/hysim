@@ -87,7 +87,7 @@ class OutputHandler:
             # User rolling average of narrow band values
             wavelengths = [
                 (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
-                for spectrum in self._scene_builder.spectra
+                for _, spectrum in self._scene_builder.spectra
             ]
             channel_names = self._create_channel_names(wavelengths)
 

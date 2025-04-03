@@ -1,59 +1,43 @@
 """BSDFs (materials) adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#
 """
+from typing import Optional, Literal, Union
 
-from hysim.mitsuba.abc import *
+from pydantic import model_serializer, Field
+from pydantic_core.core_schema import SerializerFunctionWrapHandler
+
+from hysim.mitsuba.abc import MitsubaObject, Discriminator
 from hysim.mitsuba.spectra import Spectra
-from pydantic.dataclasses import dataclass
 
-
-@dataclass
-class BSDF(NamedMitsubaObject):
+class BSDF(MitsubaObject):
     """Abstract base class for Mitsuba BSDF objects"""
-
     pass
 
 
-@dataclass
 class DiffuseMaterial(BSDF):
-    reflectance: Spectra
+    type: Literal["diffuse"] = "diffuse"
     # filename: str # for texture
-
-    @property
-    def asdict(self) -> MDict:
-        return {
-            "type": "diffuse",
-            "reflectance": self.reflectance.asdict,
-        }
+    reflectance: Spectra = Discriminator
 
 
-@dataclass
 class RoughConductorMaterial(BSDF):
-    eta: Spectra
-    k: Spectra
+    type: Literal["roughconductor"] = "roughconductor"
+    eta: Spectra = Discriminator
+    k: Spectra = Discriminator
     alpha: float
 
-    @property
-    def asdict(self) -> MDict:
-        return {
-            "type": "roughconductor",
-            "eta": self.eta.asdict,
-            "k": self.k.asdict,
-            "alpha": self.alpha,
-        }
 
-
-@dataclass
 class TwoSidedBRDF(BSDF):
-    material: Union[DiffuseMaterial, RoughConductorMaterial]
+    type: Literal["twosided"] = "twosided"
+    material: Union[DiffuseMaterial, RoughConductorMaterial] = Discriminator
+    material_name : Optional[str] = Field(exclude=True, default="material")
 
-    @property
-    def asdict(self) -> MDict:
-        return {
-            "type": "twosided",
-            "material": self.material.asdict,
-        }
+    # TODO: this is also on shapes. Create a mixin for this or a custom serializer?
+    @model_serializer(mode="wrap")
+    def _material_serializer(self, nxt: SerializerFunctionWrapHandler, info):
+        partial_result = nxt(self, info)
+        partial_result[self.material_name] = partial_result.pop("material")
+        return partial_result
 
-
-# BSDFs = TypeVar("BSDFs", bound=get_subclasses(BSDF), covariant=True)
+# Move to hysim.mitsuba.typing?
 BSDFs = Union[DiffuseMaterial, RoughConductorMaterial, TwoSidedBRDF]

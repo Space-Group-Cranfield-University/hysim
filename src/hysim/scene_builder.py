@@ -9,11 +9,9 @@ from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (
     films,
-    samplers,
     sensors,
     emitters,
     shapes,
-    integrators,
     scene,
     bsdfs,
     spectra,
@@ -22,7 +20,7 @@ from hysim.mitsuba import (
 
 def _spectrum_from_path(
     path: str, imaging_mode: ImagingMode
-) -> list[spectra.IrregularSpectrum]:
+) -> list[tuple[str, spectra.IrregularSpectrum]]:
     """Reads spectrum data from a .spd file and returns it as a list of IrregularSpectrum.
     Supports reading multiple columns of sensitivities from an .spd file.
 
@@ -35,12 +33,12 @@ def _spectrum_from_path(
 
     Returns
     -------
-    list[IrregularSpectrum]
+    list[tuple[str,IrregularSpectrum]]
         A collection of spectra data in the IrregularSpectrum class
 
     """
     spectrum_data = spdr.SPDReader(path)
-    bands = []
+    bands: list[tuple[str, spectra.IrregularSpectrum]] = []
     sensitivities = spectrum_data.values
     wavelengths = spectrum_data.wavelengths
 
@@ -48,21 +46,29 @@ def _spectrum_from_path(
         # NOTE: might need to refactored to properly handle single column case
         if np.ndim(sensitivities) == 1:
             sensitivities = np.expand_dims(sensitivities, axis=1)
-        bands = [
-            spectra.IrregularSpectrum(wavelengths, band_data)
-            for band_data in sensitivities.T
-        ]
+        count = 0
+        for band_data in sensitivities.T:
+            bands.append(
+                (
+                    f"band_{count}",
+                    spectra.IrregularSpectrum(
+                        wavelengths=wavelengths, values=band_data
+                    ),
+                )
+            )
+            count += 1
 
     elif imaging_mode == ImagingMode.HYPERSPECTRAL:
         if sensitivities.ndim != 1:
             raise TypeError("Too many columns for hyperspectral data")
         for i, _ in enumerate(wavelengths[1:], start=1):
             band = spectra.IrregularSpectrum(
-                wavelengths[i - 1 : i + 1], sensitivities[i - 1 : i + 1]
+                wavelengths=wavelengths[i - 1: i + 1],
+                values=sensitivities[i - 1: i + 1],
             )
             # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
-            band.name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
-            bands.append(band)
+            name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
+            bands.append((name, band))
     else:
         raise ValueError(
             f"Invalid imaging mode, it must be either {ImagingMode.MULTISPECTRAL} or {ImagingMode.HYPERSPECTRAL}"
@@ -97,10 +103,8 @@ class SceneBuilder:
             Scene objects positional data
 
         """
-        self._scene = scene.Scene()
-
-        logging.debug("Building integrator")
-        self._build_integrator(config)
+        logging.debug("Building Integrator")
+        self._scene = scene.Scene(integrator=config.case.integrator)
         logging.debug("Building Earth")
         self._build_earth(position_data)
         logging.debug("Building Sun")
@@ -110,64 +114,66 @@ class SceneBuilder:
         logging.debug("Building Target")
         self._build_target(config, position_data)
 
-    def _build_integrator(self, config: Config):
-        self._scene.set_integrator(config.case.integrator)
-
     def _build_earth(self, position_data: ScenePositionData):
-        earth = shapes.PlyMesh()
-        earth.name = "earth_mesh"
-        earth.filename = dh.get_earth_mesh_path()
-        earth.to_world = position_data.earth_transform
-        earth.material = bsdfs.DiffuseMaterial(
-            spectra.SpdSpectrum(dh.get_ocean_spectrum_path())
+        earth = shapes.PlyMesh(
+            to_world=position_data.earth_transform,
+            filename=dh.get_earth_mesh_path(),
+            material=bsdfs.DiffuseMaterial(
+                reflectance=spectra.SpdSpectrum(filename=dh.get_ocean_spectrum_path())
+            ),
         )
-        self._scene.add_shape(earth)
+        self._scene.add_shape("earth_mesh", earth)
 
     def _build_sun(self, position_data: ScenePositionData):
-        sun = emitters.DirectionalEmitter()
-        sun.name = "sun_emitter"
-        sun.direction = position_data.sun_direction_vector
-        sun.irradiance = spectra.SpdSpectrum(dh.get_sun_spectrum_path())
-        self._scene.add_emitter(sun)
+        sun = emitters.DirectionalEmitter(
+            direction=position_data.sun_direction_vector,
+            irradiance=spectra.SpdSpectrum(filename=dh.get_sun_spectrum_path()),
+        )
+
+        self._scene.add_emitter("sun_emitter", sun)
 
     def _build_chaser(self, config: Config, position_data: ScenePositionData):
-
         # TODO: Add option to choose between internal sensor data, user
-        film = films.SpectralFilm()
-        film.height = config.sensor.film.height
-        film.width = config.sensor.film.width
         self._spectra = _spectrum_from_path(
             config.sensor_spectrum_path, config.sensor.imaging_mode
         )
-        film.spectra = self.spectra
+        film = films.SpectralFilm(
+            width=config.sensor.film.width,
+            height=config.sensor.film.height,
+        )
+        film.set_spectrum(self.spectra)
 
-        chaser = sensors.PerspectiveCamera()
-        chaser.name = "chaser_sensor"
-        chaser.sampler = config.case.sampler
-        chaser.film = film
-        chaser.fov = config.sensor.camera.field_of_view
-        chaser.to_world = position_data.chaser_transform
-        self._scene.add_sensor(chaser)
+        chaser = sensors.PerspectiveCamera(
+            sampler=config.case.sampler,
+            film=film,
+            fov=config.sensor.camera.field_of_view,
+            to_world=position_data.chaser_transform,
+        )
+        self._scene.add_sensor("chaser_sensor", chaser)
 
     def _build_target(self, config: Config, position_data: ScenePositionData):
         for part_name, part_description in config.parts.items():
-            mesh = shapes.PlyMesh()
-            mesh.name = part_name
-            mesh.filename = part_description.file
+            mesh_material = None
+
             if part_description.user_material:
-                mesh.material = config.user_materials[part_description.user_material]
+                mesh_material = config.user_materials[part_description.user_material]
             elif part_description.database_material:
-                mesh.material = dh.get_database_material(
+                mesh_material = dh.get_database_material(
                     part_description.database_material
                 )
-            mesh.material.name = part_name + "_material"
-            mesh.to_world = position_data.target_transform
-            self._scene.add_shape(mesh)
+            mesh = shapes.PlyMesh(
+                to_world=position_data.target_transform,
+                filename=part_description.file,
+                material=mesh_material,
+                material_name=f"{part_name}_material",
+            )
+
+            self._scene.add_shape(part_name, mesh)
 
     @property
-    def scene(self):
+    def scene(self) -> scene.Scene:
         return self._scene
 
     @property
-    def spectra(self):
+    def spectra(self) -> list[tuple[str, spectra.IrregularSpectrum]]:
         return self._spectra

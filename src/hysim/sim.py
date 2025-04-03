@@ -86,7 +86,7 @@ def run_sim(run_directory: Path):
     # ------------------------------- #
     # Load to mitsuba and run
     # ------------------------------- #
-    scene_dict = scene_builder.scene.asdict
+    scene_dict = scene_builder.scene.asdict()
     logging.debug("Final Scene Dictionary...")
     logging.debug(scene_dict)
 

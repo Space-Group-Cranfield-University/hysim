@@ -1,54 +1,28 @@
-from hysim.mitsuba.abc import *
-from hysim.mitsuba.abc import _iterate_named_objects
-from hysim.mitsuba.emitters import Emitter
-from hysim.mitsuba.integrators import Integrator
-from hysim.mitsuba.sensors import Sensor
-from hysim.mitsuba.shapes import Shape
+from typing import Union, Literal
+
+from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin
+from hysim.mitsuba.emitters import Emitters
+from hysim.mitsuba.integrators import Integrators
+from hysim.mitsuba.sensors import Sensors
+from hysim.mitsuba.shapes import Shapes
 
 
-class Scene(MitsubaObject):
+class Scene(MitsubaObject, NamedObjectsMixin[Union[Sensors, Shapes, Emitters]]):
     """Mitsuba scene object
     Use with mitsuba.load_dict() to generate a Mitsuba scene
     """
 
-    _integrator: Integrator
-    _sensors: list[Sensor] = []
-    _emitters: list[Emitter] = []
-    _shapes: list[Shape] = []
+    type: Literal["scene"] = "scene"
+    integrator: Integrators
 
-    @property
-    def asdict(self) -> MDict:
-        d = {
-            "type": "scene",
-            "integrator": self.integrator.asdict,
-        }
-        _iterate_named_objects(d, self._sensors, "sensor")
-        _iterate_named_objects(d, self._emitters, "emitter")
-        _iterate_named_objects(d, self._shapes, "shape")
-        return d
-
-    @property
-    def integrator(self) -> Integrator:
-        """Get the integrator for the scene
-        Returns
-        -------
-        Integrator
-            The integrator for the scene
-        """
-        return self._integrator
-
-    def set_integrator(self, integrator: Integrator):
-        """Set the integrator for the scene"""
-        self._integrator = integrator
-
-    def add_sensor(self, sensor: Sensor):
+    def add_sensor(self, name: str, sensor: Sensors):
         """Add a sensor to the scene"""
-        self._sensors.append(sensor)
+        self._add_item(name, sensor)
 
-    def add_shape(self, shape: Shape):
+    def add_shape(self, name: str, shape: Shapes):
         """Add a shape to the scene"""
-        self._shapes.append(shape)
+        self._add_item(name, shape)
 
-    def add_emitter(self, emitter: Emitter):
+    def add_emitter(self, name: str, emitter: Emitters):
         """Add an emitter to the scene"""
-        self._emitters.append(emitter)
+        self._add_item(name, emitter)
