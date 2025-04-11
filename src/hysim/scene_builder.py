@@ -4,7 +4,7 @@ import logging
 from hysim.configs.config import Config
 from hysim.configs.constants import ImagingMode
 
-from hysim.frame_transforms import ScenePositionData
+from hysim.frame_transforms import PositionData
 from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (
@@ -91,7 +91,7 @@ class SceneBuilder:
         data to an .exr file in the OutputHandler class.
     """
 
-    def __init__(self, config: Config, position_data: ScenePositionData):
+    def __init__(self, config: Config, position_data: PositionData):
         """Initializes the SceneBuilder class
 
         Parameters
@@ -99,7 +99,7 @@ class SceneBuilder:
         config : Config
             Object containing user input data
 
-        position_data : ScenePositionData
+        position_data : PositionData
             Scene objects positional data
 
         """
@@ -114,7 +114,7 @@ class SceneBuilder:
         logging.debug("Building Target")
         self._build_target(config, position_data)
 
-    def _build_earth(self, position_data: ScenePositionData):
+    def _build_earth(self, position_data: PositionData):
         earth = shapes.PlyMesh(
             to_world=position_data.earth_transform,
             filename=dh.get_earth_mesh_path(),
@@ -124,7 +124,7 @@ class SceneBuilder:
         )
         self._scene.add_shape("earth_mesh", earth)
 
-    def _build_sun(self, position_data: ScenePositionData):
+    def _build_sun(self, position_data: PositionData):
         sun = emitters.DirectionalEmitter(
             direction=position_data.sun_direction_vector,
             irradiance=spectra.SpdSpectrum(filename=dh.get_sun_spectrum_path()),
@@ -132,7 +132,7 @@ class SceneBuilder:
 
         self._scene.add_emitter("sun_emitter", sun)
 
-    def _build_chaser(self, config: Config, position_data: ScenePositionData):
+    def _build_chaser(self, config: Config, position_data: PositionData):
         # TODO: Add option to choose between internal sensor data, user
         self._spectra = _spectrum_from_path(
             config.sensor_spectrum_path, config.sensor.imaging_mode
@@ -151,7 +151,7 @@ class SceneBuilder:
         )
         self._scene.add_sensor("chaser_sensor", chaser)
 
-    def _build_target(self, config: Config, position_data: ScenePositionData):
+    def _build_target(self, config: Config, position_data: PositionData):
         for part_name, part_description in config.parts.items():
             mesh_material = None
 
