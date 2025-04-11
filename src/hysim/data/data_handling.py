@@ -29,7 +29,7 @@ class ConfigFileMissing(Exception):
 class Kernels(Enum):
     """Enum containing path and files for SpiceyPy kernels"""
     PATH = "hysim.data.kernels"
-    KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls"]
+    KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls", "gm_de440.tpc"]
 
 
 class MaterialsData(StrEnum):
