@@ -3,10 +3,11 @@
 Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
-
+from functools import cached_property
 from typing import Literal, NamedTuple
 
 import numpy as np
+
 
 import spiceypy as spice
 
@@ -64,6 +65,12 @@ NRotationMatrix = np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
 #     """
 #     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
+@cached_property
+def mu_earth() -> float:
+    return spice.bodvrd("EARTH", "GM", 1)[1].item()
+
+def magnitude(array: np.array) -> float:
+    return np.linalg.norm(array).item()
 
 def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> float:
     """Calculates perifocal distance of the orbit
@@ -113,7 +120,6 @@ def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
 
     # TODO: Confirm preferred input, comment this out to swap to true anomaly
     mean_anomaly = kep_elements[5]
-    mu_earth = spice.bodvrd("EARTH", "GM", 1)[1].item()
     conic_elements = np.array(
         [perifocal_distance, *kep_elements[1:5], mean_anomaly, epoch, mu_earth]
     )
@@ -238,10 +244,11 @@ class PositionData:
                 state = np.array(spacecraft.position)
                 if isinstance(spacecraft, mc.ChaserSpacecraft):
                     if spacecraft.is_lvlh:
-                        # Assumption is that the target (the reference frame) is in a circular orbit
-                        # TODO: Get mean motion of target
-                        # return clohessy_wiltshire(state, TODO, self._epoch_offset)
-                        raise NotImplementedError()
+                        # Assumption is that the target (as a reference frame) is in a circular orbit
+                        orbital_energy = magnitude(self.target[3:]) ** 2 / 2 - mu_earth / magnitude(self.target[:3])
+                        semi_major_axis = -mu_earth / (2 * orbital_energy)
+                        mean_motion= np.sqrt(mu_earth / semi_major_axis ** 3)
+                        return clohessy_wiltshire(state, mean_motion, self.epoch.offset)
                     else:
                         # TODO: propagate when not in lvlh, see spiceypy.oscelt or oscltx
                         return state
@@ -359,4 +366,4 @@ class PositionData:
     def relative_distance(self) -> float:
         """Calculates relative distance between the target and chaser in a 3d
         cartesian coordinate system."""
-        return np.linalg.norm(self._target_position - self._chaser_position).item()
+        return magnitude(self._target_position - self._chaser_position)
