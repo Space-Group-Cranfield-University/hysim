@@ -9,7 +9,7 @@ from hysim.configs.constants import ConfigType, PositionFormat
 
 @dataclass(frozen=True)
 class Spacecraft:
-    position_frame: PositionFormat
+    position_frame: PositionFormat # TODO: rename position_frame to position_format
     position: list[Union[float, str]]
     attitude: list[float]
 
@@ -21,6 +21,7 @@ class Spacecraft:
 @dataclass(frozen=True)
 class ChaserSpacecraft(Spacecraft):
     attitude: Union[list[float], Literal["lookat"]]
+    is_lvlh: bool
 
     @computed_field
     @property

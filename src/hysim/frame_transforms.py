@@ -4,14 +4,14 @@ Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
 
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import numpy as np
 
 import spiceypy as spice
 
 from hysim.configs.constants import PositionFormat
-from hysim.configs.mission_config import MissionConfig, Spacecraft
+import hysim.configs.mission_config as mc
 from hysim.mitsuba.abc import Vector as MVector, Transform as MTransform
 import mitsuba as mi
 
@@ -94,7 +94,7 @@ def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
     Parameters
     ----------
     kep_elements : list[float]
-        Keplerian kep_elements describing the orbit in form:
+        Keplerian elements describing the orbit in form:
         [a, e, i, raan, arg, nu]
     epoch : float
         Epoch at the imaging time TDB seconds past J2000
@@ -161,25 +161,47 @@ def eci_to_lvlh_rotation_matrix(state: NStateVector) -> NRotationMatrix:
     return np.array([i, j, k])
 
 
-def convert_eci_to_lvlh(state, transformation_matrix, origin):
-    # Relative position
-    Rr = origin - state[:3]
+def clohessy_wiltshire(state: NStateVector, omega: float, t: float) -> NStateVector:
+    tau = omega * t
+    s = np.sin(tau)
+    c = np.cos(tau)
+    stm = np.array([
+        [4 - 3 * c, 0, 0, s / omega, (2 - 2 * c) / omega, 0],
+        [6 * s - 6 * tau, 1, 0, (-2 + 2 * c) / omega, (4 * s - 3 * tau) / omega, 0],
+        [0, 0, c, 0, 0, s / omega],
+        [3 * omega * s, 0, 0, c, 2 * s, 0],
+        [-6 * omega + 6 * c * omega, 0, 0, -2 * s, -3 + 4 * c, 0],
+        [0, 0, -omega * s, 0, 0, c]
+    ])
+    return stm @ state
 
-    return np.matmul(transformation_matrix, np.transpose(Rr))
+class Epoch(NamedTuple):
+    """Epoch class to handle epoch time in seconds past J2000
+    Attributes
+    ----------
+    base : float
+        Time in seconds past J2000 of the initial frame
+    offset : float
+        Offset time in seconds
+    """
+    base: float
+    offset: float
 
-
-def convert_lvlh_to_eci(state, transformation_matrix, origin):
-    return origin - (transformation_matrix.T @ state)
-
+    @property
+    def value(self) -> float:
+        return self.base + self.offset
 
 class PositionData:
     class StateVectors:
-        """Calculates the state vectors of the Earth, Sun, Target and Chaser
+        """Calculates the state vectors of the Earth, Sun, Target and Chaser.
+        All state vectors are in ECI frame. Unless the attribute
+        ChaserSpacecraft.is_lvlh is true, in which case the chaser are in the LVLH
+        relative to the target
 
         Attributes
         ----------
-        _epoch : float
-            Time in seconds past J2000
+        epoch : Epoch
+            The epoch of the simulation in seconds past J2000
         earth : NStateVector
             Earth state vector [0, 0, 0, 0, 0, 0] [m/s]
         sun : NStateVector
@@ -188,17 +210,16 @@ class PositionData:
             Target state vector [x, y, z, vx, vy, vz] [m/s]
         chaser : NStateVector
             Chaser state vector [x, y, z, vx, vy, vz] [m/s]
-
         """
 
-        def __init__(self, mission_config: MissionConfig, epoch: float):
-            self._epoch = epoch
+        def __init__(self, mission_config: mc.MissionConfig, epoch: Epoch):
+            self.epoch = epoch
             self.earth: NStateVector = np.zeros(6, dtype=np.float64)
-            self.chaser: NStateVector = self._convert_input(mission_config.chaser)
             self.target: NStateVector = self._convert_input(mission_config.target)
+            self.chaser: NStateVector = self._convert_input(mission_config.chaser)
             self.sun: NStateVector = self._get_sun_location()
 
-        def _convert_input(self, spacecraft: Spacecraft) -> NStateVector:
+        def _convert_input(self, spacecraft: mc.Spacecraft) -> NStateVector:
             """Converts orbit defined in mission configs file to
             orbit state vectors
 
@@ -214,11 +235,22 @@ class PositionData:
             """
             # TODO: validate spacecraft.position matches respective PositionFormat
             if spacecraft.position_frame == PositionFormat.STATE:
-                return np.array(spacecraft.position)
+                state = np.array(spacecraft.position)
+                if isinstance(spacecraft, mc.ChaserSpacecraft):
+                    if spacecraft.is_lvlh:
+                        # Assumption is that the target (the reference frame) is in a circular orbit
+                        # TODO: Get mean motion of target
+                        # return clohessy_wiltshire(state, TODO, self._epoch_offset)
+                        raise NotImplementedError()
+                    else:
+                        # TODO: propagate when not in lvlh, see spiceypy.oscelt or oscltx
+                        return state
+                else:
+                    return state
             elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
-                return kepler_to_state(spacecraft.position, self._epoch)
+                return kepler_to_state(spacecraft.position, self.epoch.value)
             elif spacecraft.position_frame == PositionFormat.TLE:
-                return tle_to_state(spacecraft.position, self._epoch)
+                return tle_to_state(spacecraft.position, self.epoch.value)
             else:
                 raise ValueError("Invalid position format")
 
@@ -233,33 +265,35 @@ class PositionData:
             # Earth ID = 399
             # Sun ID = 10
 
-            [sun_location, _] = spice.spkez(10, self._epoch, "J2000", "NONE", 399)
+            [sun_location, _] = spice.spkez(10, self.epoch.value, "J2000", "NONE", 399)
             return sun_location * 1000.0
 
-    def __init__(self, mission_config: MissionConfig, epoch: float):
+    def __init__(self, mission_config: mc.MissionConfig, epoch: Epoch):
         self._mission_config = mission_config
-        self._epoch = epoch
-        self._state_vectors = PositionData.StateVectors(mission_config, self._epoch)
+        self._state_vectors = PositionData.StateVectors(mission_config, epoch)
 
         self._local_frame_transform = eci_to_lvlh_rotation_matrix(
             self._state_vectors.target
         )
 
-        self._target_position = self._convert_eci_to_lvlh(self._state_vectors.target)
-        self._chaser_position = self._convert_eci_to_lvlh(self._state_vectors.chaser)
-        self._earth_position = self._convert_eci_to_lvlh(self._state_vectors.earth)
+        self._target_position = self._eci_to_lvlh(self._state_vectors.target)
 
-        sun_position = self._convert_eci_to_lvlh(self._state_vectors.sun)
+        chaser = mission_config.chaser
+        if chaser.position_frame == PositionFormat.STATE and chaser.is_lvlh:
+            self._chaser_position = self._state_vectors.chaser[:3]
+        else:
+            self._chaser_position = self._eci_to_lvlh(self._state_vectors.chaser)
+
+        self._earth_position = self._eci_to_lvlh(self._state_vectors.earth)
+
+        sun_position = self._eci_to_lvlh(self._state_vectors.sun)
         self._sun_direction_vector = -sun_position / np.linalg.norm(sun_position)
 
-    def _convert_eci_to_lvlh(self, state_vector: NStateVector) -> NVector:
+    def _eci_to_lvlh(self, state_vector: NStateVector) -> NVector:
+        """Converts ECI state vector to LVLH position vector in the target centered
+        reference frame"""
         offset = self._state_vectors.target[:3] - state_vector[:3]
         return self._local_frame_transform @ offset.T
-
-    # def _convert_eci_to_lvlh(self, state_vector: NVector) -> NVector:
-    #     return convert_eci_to_lvlh(
-    #         state_vector, self._local_frame_transform, self._state_vectors.target[:3]
-    #     )
 
     @property
     def chaser_position(self) -> NVector:

@@ -20,22 +20,22 @@ from pathlib import Path
 
 # Package data
 from hysim.data import data_handling as dh
-from hysim import scene_builder as sb
-from hysim import frame_transforms as ft
 
 # Simulator
 from hysim import output_data
+from hysim import scene_builder as sb
+from hysim import frame_transforms as ft
 from hysim.configs.config import Config
 
 
 class RenderInstance:
-    """Represents an instantaneous snapshot of the scene at a specified epoch"""
+    """Represents an instantaneous snapshot (a frame) of the scene at a specified epoch"""
 
     output: mit.TensorXf
     scene_builder: sb.SceneBuilder
     position_data: ft.PositionData
 
-    def __init__(self, config: Config, epoch: float):
+    def __init__(self, config: Config, epoch: ft.Epoch):
         self.epoch = epoch
         self._config = config
 
@@ -52,22 +52,31 @@ class RenderInstance:
 
 
 class RenderController:
+    class CustomMitsubaFormatter(mi.Formatter):
+        def format(self, level: mi.LogLevel, thread, class_, file, line, msg):
+            return f" {level.name.upper():8} Mitsuba - {msg}"
+
     output: mit.TensorXf
-    def __init__(self, config: Config, runs: int):
+
+    def __init__(self, config: Config):
         self._config = config
-        self.runs = runs
+        self.frame_count = config.sensor.camera.frame_count
         self.base_epoch = spice.str2et(config.mission.datetime)
-        self.instances = [RenderInstance(config, self.base_epoch)]
+        self.dt = config.sensor.camera.shutter_time / self.frame_count
+        self.frames = [
+            RenderInstance(config, ft.Epoch(self.base_epoch, self.dt * frame_index)) for frame_index in
+            range(self.frame_count)
+        ]
 
     def build_scenes(self):
         logging.info("Calculating scene geometry from orbit data")
         logging.info("Building scenes")
-        for instance in self.instances:
-            instance.build_scene()
-            # logging.debug(f"Chaser ECI Coordinates: {instance.position_data.chaser_position}")
-            # logging.info("Relative distance to target: %0.2fm", instance.position_data.relative_distance)
+        for frame in self.frames:
+            frame.build_scene()
+            # logging.debug(f"Chaser ECI Coordinates: {frame.position_data.chaser_position}")
+            # logging.info("Relative distance to target: %0.2fm", frame.position_data.relative_distance)
             # logging.debug("Final Scene Dictionary...")
-            # logging.debug(instance.scene_builder.scene.asdict())
+            # logging.debug(frame.scene_builder.scene.asdict())
 
     def render(self) -> mit.TensorXf:
         logging.info("Adding case directory search paths to mitsuba")
@@ -82,10 +91,10 @@ class RenderController:
         # logging.info("Loading scenes into Mitsuba")
         # logging.info("Running Mitsuba")
         # print("")
-        self.output = self.instances[0].render()
+        self.output = self.frames[0].render() * self.dt
 
-        for instance in self.instances[1:]:
-            self.output += instance.render()
+        for instance in self.frames[1:]:
+            self.output += instance.render() * self.dt
         # print("")
         logging.info("Render complete")
         return self.output
@@ -96,13 +105,9 @@ class RenderController:
         it. Also sets the log level to mi.LogLevel.Info to make sure the start and finished
         rendering messages are displayed."""
 
-        class CustomMitsubaFormatter(mi.Formatter):
-            def format(self, level: mi.LogLevel, thread, class_, file, line, msg):
-                return f" {level.name.upper():8} Mitsuba - {msg}"
-
         # Note:  there is no progress bar if mi.variant() is noy a scalar varint
         mitsuba_logger = mi.Thread.thread().logger()
-        mitsuba_logger.set_formatter(CustomMitsubaFormatter())
+        mitsuba_logger.set_formatter(RenderController.CustomMitsubaFormatter())
 
         mitsuba_logger.set_log_level(mi.LogLevel.Info)
         del mitsuba_logger
@@ -141,7 +146,7 @@ def run_sim(run_directory: Path):
 
     mi.set_variant(config.case.mitsuba_variant)
 
-    render_control = RenderController(config, 1)
+    render_control = RenderController(config)
     render_control.build_scenes()
     render_control.render()
 
@@ -150,7 +155,7 @@ def run_sim(run_directory: Path):
     # Export Outputs
     # ------------------------------- #
     output = output_data.OutputHandler(
-        render_control.output, render_control.instances[0].scene_builder, config
+        render_control.output, render_control.frames[0].scene_builder, config
     )
     output.export_data()
 
