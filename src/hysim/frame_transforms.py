@@ -3,12 +3,11 @@
 Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
-from functools import cached_property
+
+from functools import cache
 from typing import Literal, NamedTuple
 
 import numpy as np
-
-
 import spiceypy as spice
 
 from hysim.configs.constants import PositionFormat
@@ -65,12 +64,23 @@ NRotationMatrix = np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
 #     """
 #     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
-@cached_property
+
+@cache
 def mu_earth() -> float:
     return spice.bodvrd("EARTH", "GM", 1)[1].item()
 
+
+@cache
+def geophysical_data():
+    return [
+        spice.bodvrd("EARTH", geoph_data, 1)[1].item()
+        for geoph_data in ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
+    ]
+
+
 def magnitude(array: np.array) -> float:
     return np.linalg.norm(array).item()
+
 
 def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> float:
     """Calculates perifocal distance of the orbit
@@ -121,9 +131,17 @@ def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
     # TODO: Confirm preferred input, comment this out to swap to true anomaly
     mean_anomaly = kep_elements[5]
     conic_elements = np.array(
-        [perifocal_distance, *kep_elements[1:5], mean_anomaly, epoch, mu_earth]
+        [perifocal_distance, *kep_elements[1:5], mean_anomaly, epoch, mu_earth()]
     )
     return spice.conics(conic_elements, epoch) * 1000.0
+
+
+def parse_tle(tle_data: list[str]) -> np.ndarray[tuple[Literal[10]], np.float64]:
+    # Adds a null to first line of tle if there is not a null
+    if tle_data[0][-1] != "\x00":
+        tle_data[0] += "\x00"
+    _, tle_elements = spice.getelm(1957, len(tle_data[0]), tle_data)
+    return tle_elements
 
 
 def tle_to_state(tle_data: list[str], epoch: float) -> NStateVector:
@@ -140,17 +158,12 @@ def tle_to_state(tle_data: list[str], epoch: float) -> NStateVector:
     -------
     NStateVector
         State vectors as list [x, y, z, vx, vy, vz] [m/s]
+    float
+        Mean motion of the orbit [rad/minute]
     """
-    # Adds a null to first line of tle if there is not a null
-    if tle_data[0][-1] != "\x00":
-        tle_data[0] += "\x00"
-    [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_data)
-    geoph_data_list = ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
+    tle_elements = parse_tle(tle_data)
 
-    geophs = [
-        spice.bodvrd("EARTH", geoph_data, 1)[1].item() for geoph_data in geoph_data_list
-    ]
-    return spice.evsgp4(epoch, geophs, tle_elements) * 1000.0
+    return spice.evsgp4(epoch, geophysical_data(), tle_elements) * 1000.0
 
 
 def eci_to_lvlh_rotation_matrix(state: NStateVector) -> NRotationMatrix:
@@ -171,15 +184,18 @@ def clohessy_wiltshire(state: NStateVector, omega: float, t: float) -> NStateVec
     tau = omega * t
     s = np.sin(tau)
     c = np.cos(tau)
-    stm = np.array([
-        [4 - 3 * c, 0, 0, s / omega, (2 - 2 * c) / omega, 0],
-        [6 * s - 6 * tau, 1, 0, (-2 + 2 * c) / omega, (4 * s - 3 * tau) / omega, 0],
-        [0, 0, c, 0, 0, s / omega],
-        [3 * omega * s, 0, 0, c, 2 * s, 0],
-        [-6 * omega + 6 * c * omega, 0, 0, -2 * s, -3 + 4 * c, 0],
-        [0, 0, -omega * s, 0, 0, c]
-    ])
+    stm = np.array(
+        [
+            [4 - 3 * c, 0, 0, s / omega, (2 - 2 * c) / omega, 0],
+            [6 * s - 6 * tau, 1, 0, (-2 + 2 * c) / omega, (4 * s - 3 * tau) / omega, 0],
+            [0, 0, c, 0, 0, s / omega],
+            [3 * omega * s, 0, 0, c, 2 * s, 0],
+            [-6 * omega + 6 * c * omega, 0, 0, -2 * s, -3 + 4 * c, 0],
+            [0, 0, -omega * s, 0, 0, c],
+        ]
+    )
     return stm @ state
+
 
 class Epoch(NamedTuple):
     """Epoch class to handle epoch time in seconds past J2000
@@ -190,12 +206,14 @@ class Epoch(NamedTuple):
     offset : float
         Offset time in seconds
     """
+
     base: float
     offset: float
 
     @property
     def value(self) -> float:
         return self.base + self.offset
+
 
 class PositionData:
     class StateVectors:
@@ -222,7 +240,15 @@ class PositionData:
             self.epoch = epoch
             self.earth: NStateVector = np.zeros(6, dtype=np.float64)
             self.target: NStateVector = self._convert_input(mission_config.target)
-            self.chaser: NStateVector = self._convert_input(mission_config.chaser)
+
+            if (
+                mission_config.chaser.position_frame == PositionFormat.STATE
+                and mission_config.chaser.is_lvlh
+            ):
+                self.chaser: NStateVector = self._chaser_lvlh(mission_config.target)
+            else:
+                self.chaser: NStateVector = self._convert_input(mission_config.chaser)
+
             self.sun: NStateVector = self._get_sun_location()
 
         def _convert_input(self, spacecraft: mc.Spacecraft) -> NStateVector:
@@ -241,25 +267,40 @@ class PositionData:
             """
             # TODO: validate spacecraft.position matches respective PositionFormat
             if spacecraft.position_frame == PositionFormat.STATE:
-                state = np.array(spacecraft.position)
-                if isinstance(spacecraft, mc.ChaserSpacecraft):
-                    if spacecraft.is_lvlh:
-                        # Assumption is that the target (as a reference frame) is in a circular orbit
-                        orbital_energy = magnitude(self.target[3:]) ** 2 / 2 - mu_earth / magnitude(self.target[:3])
-                        semi_major_axis = -mu_earth / (2 * orbital_energy)
-                        mean_motion= np.sqrt(mu_earth / semi_major_axis ** 3)
-                        return clohessy_wiltshire(state, mean_motion, self.epoch.offset)
-                    else:
-                        # TODO: propagate when not in lvlh, see spiceypy.oscelt or oscltx
-                        return state
-                else:
-                    return state
+                return np.array(spacecraft.position)
             elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
                 return kepler_to_state(spacecraft.position, self.epoch.value)
             elif spacecraft.position_frame == PositionFormat.TLE:
                 return tle_to_state(spacecraft.position, self.epoch.value)
             else:
                 raise ValueError("Invalid position format")
+
+        def _chaser_lvlh(self, target: mc.Spacecraft) -> NStateVector:
+            """Calculates the chaser position in LVLH frame relative to the target.
+            First the mean motion of the target is calculated depending of the type of
+            input. This is then used with the Clohessy-Wiltshire equation to "propagate"
+            the chaser satellite.
+            """
+            mean_motion: float # rad/s
+            if target.position_frame == PositionFormat.STATE:
+                orbital_elements = spice.oscltx(
+                    self.target / 1000.0, self.epoch.value, mu_earth()
+                )
+                orbital_period = orbital_elements[10]  # Orbital period in seconds
+                if orbital_period == 0:
+                    raise ValueError(
+                        "Orbital period is zero. May be due to an eccentricity being close to 1"
+                    )
+                mean_motion = 2 * np.pi / orbital_period
+            elif target.position_frame == PositionFormat.KEPLERIAN:
+                semi_major_axis = target.position[0]
+                mean_motion = np.sqrt(mu_earth() / (semi_major_axis**3))
+            elif target.position_frame == PositionFormat.TLE:
+                tle = parse_tle(target.position)
+                mean_motion = tle[8] / 60.0
+            else:
+                raise ValueError("Invalid position format")
+            return clohessy_wiltshire(self.target, mean_motion, self.epoch.offset)
 
         def _get_sun_location(self) -> NStateVector:
             """Get location of sun with respect to Earth at epoch
