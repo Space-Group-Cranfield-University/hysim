@@ -40,7 +40,7 @@ class CustomMitsubaFormatter(mi.Formatter):
 
     @staticmethod
     @contextmanager
-    def use(frame_index: int):
+    def log(frame_index: int):
         """Creates a custom mitsuba formatter to match HySim and sets mitsuba's logger to use
         it. Also sets the log level to mi.LogLevel.Info to make sure the start and finished
         rendering messages are displayed."""
@@ -60,31 +60,31 @@ class CustomMitsubaFormatter(mi.Formatter):
 class RenderInstance:
     """Represents an instantaneous snapshot (a frame) of the scene at a specified epoch"""
 
-    output: mit.TensorXf
-    scene_builder: sb.SceneBuilder
-    position_data: ft.PositionData
-
     def __init__(self, config: Config, epoch: ft.Epoch):
         self.epoch = epoch
         self._config = config
+        self.output: mit.TensorXf = None
+        self.position_data: ft.PositionData = None
+        self.scene_dict = {}
 
-    def build_scene(self):
+    def build_scene(self, scene_builder: sb.SceneBuilder):
         self.position_data = ft.PositionData(self._config.mission, self.epoch)
-        self.scene_builder = sb.SceneBuilder(self._config, self.position_data)
+        self.scene_dict = scene_builder.update_positions(
+            self._config, self.position_data
+        )
 
     def render(self, frame_index: int = 0) -> mit.TensorXf:
-        scene_dict = self.scene_builder.scene.asdict()
-        sim: mit.Scene = mi.load_dict(scene_dict)
-        with CustomMitsubaFormatter.use(frame_index):
+        sim: mit.Scene = mi.load_dict(self.scene_dict)
+        with CustomMitsubaFormatter.log(frame_index):
             self.output = mi.render(sim)
         return self.output
 
 
 class RenderController:
-    output: mit.TensorXf
-
     def __init__(self, config: Config):
+        self.output: mit.TensorXf = None
         self._config = config
+
         self.frame_count = config.sensor.camera.frame_count
         self.base_epoch = spice.str2et(config.mission.datetime)
         self.dt = config.sensor.camera.shutter_time / self.frame_count
@@ -93,18 +93,25 @@ class RenderController:
             for frame_index in range(self.frame_count)
         ]
 
-    def build_scenes(self):
+        self.initial_frame = self.frames[0]
         logging.info("Calculating scene geometry from orbit data")
-        logging.info("Building scenes")
-        for frame in self.frames:
-            frame.build_scene()
+        self.initial_frame.position_data = ft.PositionData(config.mission, self.initial_frame.epoch)
+        logging.info("Building initial scene geometry")
+        self.scene_builder = sb.SceneBuilder(config, self.initial_frame.position_data)
+        self.initial_frame.scene_dict = self.scene_builder.scene.asdict()
+
+    def build_scenes(self):
+        logging.info("Building remaining scenes")
+        for frame in self.frames[1:]:
+            frame.build_scene(self.scene_builder)
             # logging.debug(f"Chaser ECI Coordinates: {frame.position_data.chaser_position}")
             # logging.info("Relative distance to target: %0.2fm", frame.position_data.relative_distance)
             # logging.debug("Final Scene Dictionary...")
             # logging.debug(frame.scene_builder.scene.asdict())
+        logging.info("Scene geometry built")
 
     def render(self) -> mit.TensorXf:
-        logging.info("Adding case directory search paths to mitsuba")
+        logging.info("Adding case directory search paths to Mitsuba")
         file_resolver = mi.Thread.thread().file_resolver()
 
         for path in self._config.directories:
@@ -116,7 +123,7 @@ class RenderController:
 
         # logging.info("Loading scene(s) into Mitsuba")
         logging.info("Running Mitsuba")
-        self.output = self.frames[0].render() * self.dt
+        self.output = self.initial_frame.render() * self.dt
 
         t0 = get_time()
         for i, instance in enumerate(self.frames[1:]):
@@ -170,7 +177,7 @@ def run_sim(run_directory: Path):
     # Export Outputs
     # ------------------------------- #
     output = output_data.OutputHandler(
-        render_control.output, render_control.frames[0].scene_builder, config
+        render_control.output, render_control.scene_builder, config
     )
     output.export_data()
 
