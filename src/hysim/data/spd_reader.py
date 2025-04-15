@@ -96,7 +96,7 @@ class SPDReader:
         return [float(x) for x in _string_list]
 
     @property
-    def wavelengths(self):
+    def wavelengths(self) -> list[float]:
         """returns wavelengths"""
         """Getter for wavelengths
 
@@ -108,7 +108,7 @@ class SPDReader:
         return self._wavelengths
 
     @property
-    def values(self):
+    def values(self) -> np.ndarray[float, np.dtype[float]]:
         """Getter for values in spectrum
 
         Returns

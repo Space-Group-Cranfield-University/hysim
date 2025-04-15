@@ -3,12 +3,15 @@
 Contains Database Enums to define data paths and functions to
 handle data retrieval.
 """
-import os
+import functools
 from importlib import resources
 from enum import Enum
-from pathlib import Path
+
+from strenum import StrEnum
 
 import json
+
+from hysim.mitsuba.bsdfs import TwoSidedBRDF
 
 
 # ===== IO Error Handling ===== #
@@ -29,7 +32,7 @@ class Kernels(Enum):
     KERNEL_LIST = ["de440s.bsp", "geophysical.ker", "naif0012.tls"]
 
 
-class MaterialsData(Enum):
+class MaterialsData(StrEnum):
     """Enum with path and file name of materials database"""
     PATH = "hysim.data.materials"
     MATERIALS_FILE = "materials.json"
@@ -41,45 +44,19 @@ class SensorsData(Enum):
     SENSORS_FILE = "sensors.json"
 
 
-class LightSourceData(Enum):
+class LightSourceData(StrEnum):
     """Enum with path and file names of light sources"""
     PATH = "hysim.data.light_sources"
     SUNLIGHT_SPECTRUM = "wehrli85.spd"
 
 
-class EarthData(Enum):
+class EarthData(StrEnum):
     """Enum of path and file names of Earth data"""
     PATH = "hysim.data.earth_model"
     SOIL_SPECTRUM = "soil.spd"
     OCEAN_SPECTRUM = "ocean.spd"
     MESH = "earth.ply"
     SURFACE_BITMAP = "earth.jpg"
-
-
-def get_user_data_path(filename):
-    """Gets data paths of file in run directory
-
-    Walks through working directory to retrieve file
-    path
-
-    Parameters
-    ----------
-    filename : str
-        Name of the file to search for
-
-    Returns
-    -------
-    str
-        Path to file
-    """
-    for root, _, files in os.walk(Path.cwd()):
-        for file in files:
-            if file == filename:
-                return os.path.join(root, file).replace("\\", "/")
-
-    # raise DataFileNotFoundError(
-    #     f"{filename} cannot be found in the case directory"
-    # )
 
 
 def get_kernel_paths():
@@ -115,34 +92,33 @@ def read_json_package_data(path, file):
         with open(path_data, "r", encoding="utf-8") as j:
             return json.loads(j.read())
 
-
-def get_material_from_database(material_name):
-    """Retrieves material dictionary from database
-
-    Parameters
-    ----------
-    material_name : str
-        Name of material in database
+@functools.cache
+def load_material_database() -> dict[str, TwoSidedBRDF]:
+    """Loads the material database caches it and returns it as
+    a dictionary
 
     Returns
     -------
-    dict
-        Material dictionary
+    dict[str, TwoSidedBRDF]
+        Dictionary of materials
     """
-    materials_data = read_json_package_data(
-        MaterialsData.PATH.value, MaterialsData.MATERIALS_FILE.value
+    materials = read_json_package_data(
+        MaterialsData.PATH, MaterialsData.MATERIALS_FILE
     )
-    material_dict = materials_data[material_name]
+    for material_name, material_dict in materials.items():
+        mat = TwoSidedBRDF(**material_dict)
+        mat.material.reflectance.filename = get_data_path(
+            MaterialsData.PATH, mat.material.reflectance.filename
+        )
+        materials[material_name] = mat
+    return materials
 
-    if material_dict["material"]["type"] == "diffuse":
-        filename = material_dict["material"]["reflectance"]["filename"]
-        file_path = get_data_path(MaterialsData.PATH.value, filename)
-        material_dict["material"]["reflectance"]["filename"] = str(file_path)
 
-    return material_dict
+def get_database_material(material_name: str) -> TwoSidedBRDF:
+    """Retrieves material dictionary from database"""
+    return load_material_database()[material_name]
 
-
-def get_data_path(directory, file):
+def get_data_path(directory: str, file: str) -> str:
     """Get unix style path of data
 
     Parameters
@@ -155,24 +131,20 @@ def get_data_path(directory, file):
     Returns
     -------
     str
-        Unix style path to data
+        Path to data
     """
     with resources.path(directory, file) as path:
-        return str(path).replace("\\", "/")
+        return str(path)
 
 
-def get_sunlight_spectrum():
-    """Get path to sunlight spectrum data
+def get_earth_mesh_path() -> str:
+    return get_data_path(EarthData.PATH,EarthData.MESH)
 
-    Returns
-    -------
-    str
-        Path to sunlight data
-    """
-    return get_data_path(
-        LightSourceData.PATH.value, LightSourceData.SUNLIGHT_SPECTRUM.value
-    )
+def get_ocean_spectrum_path() -> str:
+    return get_data_path(EarthData.PATH,EarthData.OCEAN_SPECTRUM)
 
+def get_sun_spectrum_path() -> str:
+    return get_data_path(LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM)
 
 def list_defined_materials():
     """Returns list of materials inside material database

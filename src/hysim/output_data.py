@@ -1,247 +1,161 @@
 """Output data module
 
-This module contains classes to handle and format output render data from 
+This module contains classes to handle and format output render data from
 the simulator.
 """
-import os
 import logging
-from itertools import tee
+from pathlib import Path
+from typing import Final, Callable
 
 import mitsuba as mi
 import numpy as np
 import imageio as iio
 
+from hysim.configs.case_config import OutputItem
+from hysim.configs.config import Config
+from hysim.configs.constants import ImagingMode, OutputFormat
+from hysim.scene_builder import SceneBuilder
 
-# Useful functions. TODO: During refactoring, move to utils module
-def pairwise(iterable):
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
-def two_value_moving_average(values: list) -> list:
-    """Creates moving average with a window size of two
-
-    Parameters
-    ----------
-    values : list
-        List of values to average
-
-    Returns
-    -------
-    list
-        Moving average result
-    """
-    return [(lower + higher) / 2 for lower, higher in pairwise(values)]
-
-
-# Core Classes
 class OutputHandler:
-    """Handles output formatter
-
-    Attributes
-    ----------
-    output : object
-        Output data object, OutputFormatter
-    case_directory : str
-        Path to case directory
-
-    Methods
-    -------
-    produce_output_data(user_inputs)
-        For each format defined by user, export output data
-    """
-
-    def __init__(self, render_data, film_data, case_directory: str):
-        """Initializer
-
-        Parameters
-        ----------
-        render_data : TensorXf
-            Tensor array output from renderer
-        film_data : SpectralFilm
-            Hyperspectral film object
-        case_directory : str
-            Path to case directory
-        """
-        self.output = OutputFormatter(render_data, film_data)
-        self.case_directory = case_directory
-
-    def produce_output_data(self, user_inputs):
-        """Produces output files using data in OutputFormatter
-
-        Parameters
-        ----------
-        user_inputs : object
-            Input data from configuration files
-        output_format : object
-            Holds export function defined by user input
-        """
-        for output_selection in user_inputs.case_config["output"]:
-            output_format = self.output.formats[output_selection["format"]]
-            output_format(output_selection, user_inputs)
-
-
-class OutputFormatter:
-    """Formats output data from rendered scene
+    """Formats data from the rendered scene and outputs it to a user specified location.
 
     Output data is converted to user defined format. Currently
     supported formats:
     - EXR
-
-    Attributes
-    ----------
-    film_data : SpectralFilm
-        Holds hyperspectral/multispectral film data
-    render_data : TensorXf
-        Tensor array output from renderer
-    formats : dict
-        Dictionary of export functions for each format
-
-    Methods
-    -------
-    export_as_exr(output_params["file_name"])
-        Exports rendered scene data in OpenEXR format
+    - PNG
+    - CSV
     """
 
-    def __init__(self, render_data, film_data):
-        """Initializer"""
-        self.film_data = film_data
-        self.render_data = render_data
-        self.formats = {
-            "exr": self.export_as_exr,
-            "png": self.export_as_png,
-            "csv": self.export_as_csv,
+    #def __init__(self, render_data: mi.TensorXf, scene_builder:SceneBuilder,  config: Config): #TODO: mitsuba import warning
+    def __init__(self, render_data, scene_builder: SceneBuilder, config: Config):
+        """Initializer
+
+        Parameters
+        ----------
+        render_data : mi.TensorXf
+            Tensor array output from mitsuba
+        scene_builder : SceneBuilder
+            The scene builder. Only used for getting spectra data with a hyperspectral
+            imaging mode set.
+        config : Config
+            The user configuration object
+        """
+        self._render_data = render_data
+        self._config = config
+        self._scene_builder = scene_builder
+        self._case_directory = Path(config.case_directory)
+        self._log_prefix: Final[str] = "Exporting results as"
+        self._format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
+            OutputFormat.EXR: self._export_as_exr,
+            OutputFormat.PNG: self._export_as_png,
+            OutputFormat.CSV: self._export_as_csv,
         }
 
-    def create_channel_names(self, wavelengths: list) -> list:
+    def _create_output_directory(self, output_item: OutputItem) -> Path:
+        result_dir = self._case_directory / output_item.file_name
+        if result_dir.is_dir():
+            logging.debug(
+                f"The directory \"{result_dir}\" already exists. The .{output_item.format} files inside may be overwritten."
+            )
+        else:
+            result_dir.mkdir(parents=True, exist_ok=True)
+        return result_dir
+
+
+    @staticmethod
+    def _create_channel_names(wavelengths: list[float]) -> list[str]:
         """Generates list of channel names for the following
         exr header format: S0.xxx,xxnm where x is wavelength.
-
-        Parameters
-        ----------
-        wavelengths : list
-            List of reference wavelengths used for channel name
-
-        Returns
-        -------
-        channel_names : list(str)
-            List of channel names.
         """
-        channel_names = []
+        return [
+            f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths
+        ]
 
-        for wavelength in wavelengths:
-            wavelength_string = str(wavelength).replace(".", ",")
-            channel_names.append(f"S0.{wavelength_string}nm")
+    def _export_as_exr(self, output_item: OutputItem):
+        logging.info(f"{self._log_prefix} a .{output_item.format} file")
 
-        return channel_names
-
-    def export_as_exr(self, output_params, user_inputs):
-        """Exports render data as .exr file
-
-        Parameters
-        ----------
-        output_params["file_name"] : str
-            Exported file name
-        user_inputs
-            Object containing dictionaries of user inputs
-        """
-
-        logging.info("Exporting results as EXR File")
-
-        # Multispectral case
-        if user_inputs.sensor_config["imaging_mode"] == "multispectral":
+        channel_names: list[str]
+        if self._config.sensor.imaging_mode == ImagingMode.MULTISPECTRAL:
             # Find user input for band reference values
             try:
-                channel_names = self.create_channel_names(
-                    output_params["reference_wavelengths"]
+                channel_names = self._create_channel_names(
+                    output_item.reference_wavelengths
                 )
-            except KeyError:
-                logging.error(
-                    "reference_wavelengths required for multispectral .exr"
-                )
-
-        # Hyperspectral case
-        elif user_inputs.sensor_config["imaging_mode"] == "hyperspectral":
+            except (KeyError, TypeError):
+                logging.error("reference_wavelengths required for multispectral .exr")
+        elif self._config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
             # User rolling average of narrow band values
-            channel_names = self.create_channel_names(
-                two_value_moving_average(self.film_data.spectrum.wavelengths)
-            )
+            wavelengths = [
+                (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
+                for _, spectrum in self._scene_builder.spectra
+            ]
+            channel_names = self._create_channel_names(wavelengths)
 
-        if len(channel_names) != len(self.render_data[0, 0, :]):
+        if len(channel_names) != len(self._render_data[0, 0, :]):
             raise ValueError(
                 "Total reference wavelengths and channels should be the same"
             )
 
-        result_array = np.array(self.render_data)
-
-        if len(self.render_data[0, 0, :]) == 1:
+        if len(self._render_data[0, 0, :]) == 1:
             pixel_format = mi.Bitmap.PixelFormat.Y
         else:
             pixel_format = mi.Bitmap.PixelFormat.MultiChannel
 
         result_bmp = mi.Bitmap(
-            result_array,
+            self._render_data,
             pixel_format=pixel_format,
             channel_names=channel_names,
         )
 
-        result_bmp.metadata()["pixelAspectRatio"] = 1
-        result_bmp.metadata()["screenWindowWidth"] = 1
+        if "scalar" in mi.variant():
+            # These assignments cause errors on cuda variants.
+            result_bmp.metadata()["pixelAspectRatio"] = 1
+            result_bmp.metadata()["screenWindowWidth"] = 1
 
-        mi.util.write_bitmap(output_params["file_name"], result_bmp)
+        file_name = output_item.file_name
+        exr = "." + OutputFormat.EXR
+        if not file_name.endswith(exr):
+            file_name += exr
 
-    def export_as_png(self, output_params: str, _):
-        """Exports render data as .png files
+        file_path = self._case_directory / file_name
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        Parameters
-        ----------
-        output_params
-            User provided output parameters
-        """
-        logging.info("Exporting results as PNG files")
-        if not os.path.isdir(output_params["file_name"]):
-            os.mkdir(output_params["file_name"])
-        else:
-            # TODO: Logger here to say it already exists
-            pass
+        if file_path.is_file():
+            logging.info(f"The file \"{file_path}\" already exists. Overwriting...")
 
-        for i in range(len(self.render_data[0, 0, :])):
-            dir_name = output_params["file_name"]
-            band_name = f"Band_{i}.png"
-            results_array = np.array(self.render_data[:, :, i])
+        mi.util.write_bitmap(str(file_path), result_bmp)
+
+    def _export_as_png(self, output_item: OutputItem):
+        logging.info(f"{self._log_prefix} .{output_item.format} files")
+
+        # output_item.file_name is actually a directory here
+        results_dir = self._create_output_directory(output_item)
+
+        for i in range(len(self._render_data[0, 0, :])):
+            results_array = np.array(self._render_data[:, :, i])
             iio.imwrite(
-                f"{dir_name}/{band_name}",
+                results_dir / f"Band_{i}.png",
                 # np.interp(
                 #      results_array,
                 #      (results_array.min(), results_array.max()),
                 #      (0, 255)),
                 (results_array).astype(np.uint8),
                 # prefer_uint8=False
-            )
+                )
 
-    def export_as_csv(self, output_params: str, _):
-        """Exports render data as .csv files
+    def _export_as_csv(self, output_item: OutputItem):
+        logging.info(f"{self._log_prefix} .{output_item.format} files")
 
-        Parameters
-        ----------
-        output_params
-            User provided output parameters
-        """
-        logging.info("Exporting results as CSV files")
-        if not os.path.isdir(output_params["file_name"]):
-            os.mkdir(output_params["file_name"])
-        else:
-            # TODO: Logger here to say it already exists
-            pass
+        # output_item.file_name is actually a directory here
+        results_dir = self._create_output_directory(output_item)
 
-        for i in range(len(self.render_data[0, 0, :])):
-            dir_name = output_params["file_name"]
-            band_name = f"Band_{i}.csv"
-            results_array = np.array(self.render_data[:, :, i])
+        for i in range(len(self._render_data[0, 0, :])):
+            results_array = np.array(self._render_data[:, :, i])
             np.savetxt(
-                f"{dir_name}/{band_name}", results_array, delimiter=","
+                results_dir / f"Band_{i}.csv", results_array, delimiter=","
             )
 
-    def export_as_tiff(self, output_params):
-        raise NotImplementedError("Tiff export not added")
+    def export_data(self):
+        """For each format defined by user, export output data"""
+        for output in self._config.case.output:
+            self._format_map[output.format](output)

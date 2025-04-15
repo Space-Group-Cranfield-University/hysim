@@ -1,0 +1,425 @@
+"""Orbit frame transformation module
+
+Module to handle transformations from input coordinates in various reference
+frames to the local vertical local horizontal frame of the target.
+"""
+
+import numpy as np
+import numpy.typing as npt
+
+import spiceypy as spice
+
+from hysim.configs.constants import PositionFormat
+from hysim.configs.mission_config import MissionConfig, Spacecraft
+from hysim.mitsuba.abc import Vector as MVector, Transform as MTransform
+import mitsuba as mi
+
+
+# Types
+NVector = npt.NDArray[np.float64]
+
+# Constants
+MU_EARTH = 3.986004418e5
+
+
+# def calculate_eccentric_anomaly(
+#     eccentricity: float, true_anomaly: float
+# ) -> float:
+#     """Calculates eccentric anomaly given eccentricity and true anomaly
+#
+#     Parameters
+#     ----------
+#     eccentricity : float
+#         Eccentricity of an orbit [no units].
+#     true_anomaly : float
+#         True anomaly [rad]
+#
+#     Returns
+#     -------
+#     float
+#         Eccentric anomaly of an orbit [rad]
+#     """
+#     return 2 * np.arctan(
+#         np.sqrt((1 - eccentricity) / (1 + eccentricity))
+#         * np.tan(true_anomaly / 2)
+#     )
+#
+#
+# def calculate_mean_anomaly(
+#     eccentric_anomaly: float, eccentricity: float
+# ) -> float:
+#     """Calculates mean anomaly of an orbit given eccentric anomaly
+#     and eccentricity.
+#
+#     Parameters
+#     ----------
+#     eccentric_anomaly : float
+#         Eccentric anomaly of the orbit [rad]
+#     eccentricity : float
+#         Eccentricity of the orbit [rad]
+#
+#     Returns
+#     -------
+#     float
+#         Mean anomaly of the orbit [rad]
+#     """
+#     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
+
+
+def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> list:
+    """Calculates perifical distance of the orbit
+
+    Parameters
+    ----------
+    semi_major_axis : float
+        Semi major axis of the orbit [m]
+    eccentricity : float
+        Eccentricity of the orbit [no units]
+
+    Returns
+    -------
+    float
+        Perifocal distance [m]
+    """
+    return semi_major_axis * np.abs(1 - eccentricity)
+
+
+def convert_kepler_to_state_vectors(elements: list, epoch: float) -> NVector:
+    """Performs calculations to convert keplerian elements to state
+    in ECI.
+
+    State vectors contain:
+    - Position vector (x, y, z) [m]
+    - Velocity vector (vx, vy, vz) [m/s]
+
+    Parameters
+    ----------
+    elements : list
+        Keplerian elements describing the orbit in form:
+        [a, e, i, raan, arg, nu]
+    epoch : float
+        Epoch at the imaging time TDB seconds past J2000
+
+    Returns
+    -------
+    list
+        State vectors as list [x, y, z, vx, vy, vz] [m/s]
+    """
+    perifocal_distance = calculate_perifocal_distance(elements[0], elements[1])
+
+    # TODO: Confirm prefered input, uncomment this code to take in true anomaly
+    # mean_anomaly = calculate_mean_anomaly(
+    #     calculate_eccentric_anomaly(elements[1], elements[5]), elements[1]
+    # )
+
+    # TODO: Confirm prefered input, comment this out to swap to true anomaly
+    mean_anomaly = elements[5]
+
+    return (
+        spice.conics(
+            [
+                perifocal_distance,
+                *elements[1:5],
+                mean_anomaly,
+                epoch,
+                MU_EARTH,
+            ],
+            epoch,
+        )
+        * 1000
+    )
+
+
+def check_for_null(tle_data: list) -> float:
+    """Adds a null to first line of tle if there is not a null
+
+    Parameters
+    ----------
+    tle_data : list
+        List of tle strings
+
+    Returns
+    -------
+    tle_data : list
+        List of tle strings
+    """
+    if tle_data[0][-1] != "\x00":
+        tle_data[0] += "\x00"
+    return tle_data
+
+
+def convert_tle_to_state_vectors(tle_data: list, epoch: float) -> NVector:
+    """Converts two line element set to state vectors in ECI
+
+    Parameters
+    ----------
+    tle_data : list
+        List of tle strings
+    epoch : float
+        Epoch in seconds past J2000
+
+    Returns
+    -------
+    list
+        State vectors as list [x, y, z, vx, vy, vz] [m/s]
+    """
+    tle_data = check_for_null(tle_data)
+    [_, tle_elements] = spice.getelm(1957, len(tle_data[0]), tle_data)
+    geoph_data_list = ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
+    geophs = [
+        float(spice.bodvrd("EARTH", geoph_data, 1)[1]) for geoph_data in geoph_data_list
+    ]
+    return spice.evsgp4(epoch, geophs, tle_elements) * 1000
+
+
+# def compute_eci_to_lvlh_rotation_matrix(state_vectors: list) -> np.array:
+#     """Determines rotation matrix used to convert ECI to LVLH
+
+#     Parameters
+#     ----------
+#     state_vectors : list
+#         State vectors as list [x, y, z, vx, vy, vz] [m/s]
+
+#     Returns
+#     -------
+#     array
+#         ECI -> LVLH transformation matrix
+#     """
+#     position = state_vectors[0:3]
+#     velocity = state_vectors[3:6]
+
+#     z_component = np.array(-position / np.linalg.norm(position))
+
+#     x_component = np.array(
+#         -np.cross(position, velocity)
+#         / np.linalg.norm(np.cross(position, velocity))
+#     )
+
+#     y_component = np.array(np.cross(z_component, x_component))
+
+#     return np.transpose(np.array([x_component, y_component, z_component]))
+
+
+# def convert_eci_to_lvlh(
+#     state_vectors: list, transform: np.array, origin: list
+# ) -> list:
+#     """Converts position in ECI to LVLH frame
+
+#     Parameters
+#     ----------
+#     state_vectors : list
+#         State vectors as list [x, y, z, vx, vy, vz] [m/s]
+#     transform : np.array
+#         ECI -> LVLH transformation matrix
+#     origin : list
+#         Origin of LVLH frame
+
+#     Returns
+#     -------
+#     list
+#         Coordinates in LVLH frame
+#     """
+#     return (
+#         np.einsum("ij,i->j", transform, state_vectors[:3])
+#         + [
+#             0,
+#             0,
+#             np.linalg.norm(origin[:3]),
+#         ]
+#     ) * 1000
+
+
+def compute_eci_to_lvlh_rotation_matrix(state):
+    # Angular momentum of target
+    angular_momentum = np.cross(state[:3], state[3:])
+
+    # Unit vectors of the co-moving frame
+    k = state[:3] / np.linalg.norm(state[:3])
+    j = -angular_momentum / np.linalg.norm(-angular_momentum)
+    i = np.cross(j, k)
+
+    return np.array([i, j, k])
+
+
+def convert_eci_to_lvlh(state, transformation_matrix, origin):
+    # Relative position
+    Rr = origin - state[:3]
+
+    return np.matmul(transformation_matrix, np.transpose(Rr))
+
+
+# class EnvironmentObject(StrEnum):
+#     EARTH = "earth"
+#     SUN = "sun"
+#     TARGET = "target"
+#     CHASER = "chaser"
+
+
+class StateVectors:
+    """Calculates the state vectors of the Earth, Sun, Target and Chaser
+    Attributes
+    ----------
+    _epoch : float
+        Time in seconds past J2000
+    earth : Vector
+        Earth state vector [0, 0, 0, 0, 0, 0] [m/s]
+    sun : Vector
+        Sun state vector [x, y, z, vx, vy, vz] [m/s]
+    target : Vector
+        Target state vector [x, y, z, vx, vy, vz] [m/s]
+    chaser : Vector
+        Chaser state vector [x, y, z, vx, vy, vz] [m/s]
+
+    """
+
+    _epoch: float
+    earth: NVector = np.zeros(6, dtype=np.float64)
+    sun: NVector
+    target: NVector
+    chaser: NVector
+
+    def __init__(self, mission_config: MissionConfig, epoch: float):
+        self._epoch = epoch
+        self.chaser = self._convert_input(mission_config.chaser)
+        self.target = self._convert_input(mission_config.target)
+        self.sun = self._get_sun_location()
+
+    def _convert_input(self, spacecraft: Spacecraft) -> NVector:
+        """Converts orbit defined in mission configs file to
+        orbit state vectors
+
+        Parameters
+        ----------
+        spacecraft : Spacecraft
+            The Spacecraft object from mission config file
+
+        Returns
+        -------
+        Vector
+            Orbit state vectors
+        """
+        if spacecraft.position_frame == PositionFormat.STATE:
+            return np.array(spacecraft.position)
+        elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
+            return convert_kepler_to_state_vectors(spacecraft.position, self._epoch)
+        elif spacecraft.position_frame == PositionFormat.TLE:
+            return convert_tle_to_state_vectors(spacecraft.position, self._epoch)
+
+    def _get_sun_location(self) -> NVector:
+        """Get location of sun with respect to Earth at epoch
+
+        Returns
+        -------
+        list
+            Sun state vector
+        """
+        # Earth ID = 399
+        # Sun ID = 10
+
+        [sun_location, _] = spice.spkez(10, self._epoch, "J2000", "NONE", 399)
+        return sun_location * 1000
+
+
+class ScenePositionData:
+    def __init__(self, mission_config: MissionConfig, kernel_paths: list[str]):
+        spice.furnsh(kernel_paths)
+        self._mission_config = mission_config
+        self._epoch = spice.str2et(self._mission_config.datetime)
+
+        self._state_vectors = StateVectors(mission_config, self._epoch)
+
+        self._local_frame_transform = compute_eci_to_lvlh_rotation_matrix(
+            self._state_vectors.target
+        )
+
+        self._target_position = self._convert_eci_to_lvlh(self._state_vectors.target)
+        self._chaser_position = self._convert_eci_to_lvlh(self._state_vectors.chaser)
+        self._earth_position = self._convert_eci_to_lvlh(self._state_vectors.earth)
+
+        sun_position = self._convert_eci_to_lvlh(self._state_vectors.sun)
+        self._sun_direction_vector = -sun_position / np.linalg.norm(sun_position)
+
+    def _convert_eci_to_lvlh(self, state_vector: NVector) -> NVector:
+        return convert_eci_to_lvlh(
+            state_vector, self._local_frame_transform, self._state_vectors.target[:3]
+        )
+
+    # @property
+    # def earth_position(self) -> Vector:
+    #     return self._earth_position
+
+    @property
+    def chaser_position(self) -> NVector:
+        """Returns chaser position in target centered LVLH
+
+        Returns
+        -------
+        Vector
+            Chaser position [x, y, z] [m]
+
+        """
+        return self._chaser_position
+
+    @property
+    def sun_direction_vector(self) -> MVector:
+        """Returns Sun direction vector relative to target centered LVLH
+        Returns
+        -------
+        MVector
+            Sun direction vector
+        """
+        return MVector(self._sun_direction_vector)
+
+    @classmethod
+    def _get_spacecraft_transform(
+        cls, position: NVector, attitude: list[float]
+    ) -> MTransform:
+        return (
+            mi.ScalarTransform4f()
+            .translate(position)
+            .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
+            .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
+            .rotate(axis=[0, 0, 1], angle=np.rad2deg(attitude[2]))
+        )
+
+    @property
+    def earth_transform(self) -> MTransform:
+        """Returns the mitsuba transformation matrix for the Earth"""
+        return mi.ScalarTransform4f().translate(self._earth_position)
+
+    @property
+    def target_transform(self) -> MTransform:
+        """Returns the mitsuba transformation matrix for the target"""
+        return self._get_spacecraft_transform(
+            self._target_position, self._mission_config.target.attitude
+        )
+
+    @property
+    def chaser_transform(self) -> MTransform:
+        """Returns the mitsuba transformation matrix for the chaser"""
+        if self._mission_config.chaser.is_lookat:
+            return mi.ScalarTransform4f().look_at(
+                origin=self._chaser_position,
+                target=[0, 0, 0],
+                up=[0, 0, -1],  # Assumed +z is nadir
+            )
+        else:
+            return self._get_spacecraft_transform(
+                self._chaser_position, self._mission_config.chaser.attitude
+            )
+
+    @property
+    def relative_distance(self) -> float:
+        """Calculates relative distance between the target and chaser in a 3d
+        cartesian coordinate system.
+
+        Returns
+        -------
+        float
+            Distance between two points
+        """
+        p1 = self._chaser_position
+        p2 = self._target_position
+        return (
+            (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2
+        ) ** 0.5
