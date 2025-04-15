@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-from typing import Union, Literal
+from typing import Union, Literal, Generic, TypeVar
 
 from pydantic import computed_field
 from pydantic.dataclasses import dataclass
-from hysim.configs.constants import ConfigType, PositionFormat
+from hysim.util.constants import ConfigType, PositionFormat
 
-
+_T = TypeVar("_T")
 @dataclass(frozen=True)
-class Spacecraft:
+class Spacecraft(Generic[_T]):
     position_frame: PositionFormat # TODO: rename position_frame to position_format
     position: list[Union[float, str]]
-    attitude: list[float]
+    attitude: _T
 
-
-# class TargetSpacecraft(Spacecraft):
-#     pass
+@dataclass(frozen=True)
+class TargetSpacecraft(Spacecraft[list[float]]):
+    pass
 
 
 @dataclass(frozen=True)
-class ChaserSpacecraft(Spacecraft):
-    attitude: Union[list[float], Literal["lookat"]]
+class ChaserSpacecraft(Spacecraft[Union[list[float], Literal["lookat"]]]):
     is_lvlh: bool
 
     @computed_field
@@ -33,5 +32,5 @@ class ChaserSpacecraft(Spacecraft):
 class MissionConfig:
     file_type: ConfigType
     datetime: str
-    target: Spacecraft
+    target: TargetSpacecraft
     chaser: ChaserSpacecraft

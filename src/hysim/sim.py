@@ -14,7 +14,6 @@ from contextlib import contextmanager
 
 # Packages
 import mitsuba as mi
-import mitsuba.scalar_rgb as mit
 import spiceypy as spice
 
 # I/O
@@ -22,6 +21,7 @@ from pathlib import Path
 
 # Package data
 from hysim.data import data_handling as dh
+import hysim.util.mitsuba_types as mit
 
 # Simulator
 from hysim import output_data
@@ -63,7 +63,7 @@ class RenderInstance:
     def __init__(self, config: Config, epoch: ft.Epoch):
         self.epoch = epoch
         self._config = config
-        self.output: mit.TensorXf = None
+        self.output: mit.Tensor = None
         self.position_data: ft.PositionData = None
         self.scene_dict = {}
 
@@ -73,8 +73,8 @@ class RenderInstance:
             self._config, self.position_data
         )
 
-    def render(self, frame_index: int = 0) -> mit.TensorXf:
-        sim: mit.Scene = mi.load_dict(self.scene_dict)
+    def render(self, frame_index: int = 0) -> mit.Tensor:
+        sim: mi.Scene = mi.load_dict(self.scene_dict)
         with CustomMitsubaFormatter.log(frame_index):
             self.output = mi.render(sim)
         return self.output
@@ -82,7 +82,7 @@ class RenderInstance:
 
 class RenderController:
     def __init__(self, config: Config):
-        self.output: mit.TensorXf = None
+        self.output: mit.Tensor = None
         self._config = config
 
         self.frame_count = config.sensor.camera.frame_count
@@ -110,7 +110,7 @@ class RenderController:
             # logging.debug(frame.scene_builder.scene.asdict())
         logging.info("Scene geometry built")
 
-    def render(self) -> mit.TensorXf:
+    def render(self) -> mit.Tensor:
         logging.info("Adding case directory search paths to Mitsuba")
         file_resolver = mi.Thread.thread().file_resolver()
 

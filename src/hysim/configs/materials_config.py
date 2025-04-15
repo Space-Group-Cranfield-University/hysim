@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic.dataclasses import dataclass
 
-from hysim.configs.constants import ConfigType
+from hysim.util.constants import ConfigType
 from hysim.mitsuba.bsdfs import BSDFs
 from hysim.mitsuba.abc import Discriminator
 

@@ -28,13 +28,11 @@ classifiers=[
 ]
 
 dependencies = [
-    "numpy==1.23.5",
+    "numpy==2.0.2",
     "mitsuba==3.6.4",
     "rickle==1.2.3",
-    "StrEnum==0.4.15",
-    "spiceypy==5.1.2",
-    "imageio==2.23.0",
-    "pydantic==2.10.6",
+    "spiceypy==6.0.0",
+    "pydantic==2.11.3",
 ]
 
 [tool.mypy]

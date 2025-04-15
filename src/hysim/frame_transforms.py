@@ -10,12 +10,15 @@ from typing import Literal, NamedTuple
 import numpy as np
 import spiceypy as spice
 
-from hysim.configs.constants import PositionFormat
+from hysim.util.constants import PositionFormat
 import hysim.configs.mission_config as mc
-from hysim.mitsuba.abc import Vector as MVector, Transform as MTransform
+import hysim.util.mitsuba_types as mit
 import mitsuba as mi
 
 # Types
+MVector = mit.Vector
+MTransform = mit.Transform
+
 NVector = np.ndarray[tuple[Literal[3]], np.ScalarType]
 NStateVector = np.ndarray[tuple[Literal[6]], np.ScalarType]
 NRotationMatrix = np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
@@ -275,7 +278,7 @@ class PositionData:
             else:
                 raise ValueError("Invalid position format")
 
-        def _chaser_lvlh(self, target: mc.Spacecraft) -> NStateVector:
+        def _chaser_lvlh(self, target: mc.TargetSpacecraft) -> NStateVector:
             """Calculates the chaser position in LVLH frame relative to the target.
             First the mean motion of the target is calculated depending of the type of
             input. This is then used with the Clohessy-Wiltshire equation to "propagate"
@@ -395,7 +398,7 @@ class PositionData:
         if self._mission_config.chaser.is_lookat:
             return mi.ScalarTransform4f().look_at(
                 origin=self._chaser_position,
-                target=[0, 0, 0],
+                target=self._target_position,
                 up=[0, 0, -1],  # Assumed +z is nadir
             )
         else:

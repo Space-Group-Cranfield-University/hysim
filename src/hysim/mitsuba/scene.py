@@ -1,6 +1,6 @@
-from typing import Union, Literal
+from typing import Union, Literal, Annotated
 
-from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin
+from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin, Discriminator
 from hysim.mitsuba.emitters import Emitters
 from hysim.mitsuba.integrators import Integrators
 from hysim.mitsuba.sensors import Sensors
@@ -14,6 +14,8 @@ class Scene(MitsubaObject, NamedObjectsMixin[Union[Sensors, Shapes, Emitters]]):
 
     type: Literal["scene"] = "scene"
     integrator: Integrators
+
+    __pydantic_extra__: dict[str, Annotated[Union[Sensors, Shapes, Emitters], Discriminator]]
 
     def add_sensor(self, name: str, sensor: Sensors):
         """Add a sensor to the scene"""

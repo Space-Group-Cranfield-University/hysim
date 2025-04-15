@@ -3,10 +3,10 @@ from typing import Any
 import numpy as np
 import logging
 
-from strenum import StrEnum
+from hysim.util.strenum import StrEnum
 
 from hysim.configs.config import Config
-from hysim.configs.constants import ImagingMode
+from hysim.util.constants import ImagingMode
 
 from hysim.frame_transforms import PositionData
 from hysim.data import data_handling as dh, spd_reader as spdr
@@ -100,6 +100,7 @@ class SceneBuilder:
         EARTH = "earth_mesh"
         SUN = "sun_emitter"
         CHASER = "chaser_sensor"
+
     def __init__(self, config: Config, position_data: PositionData):
         """Initializes the SceneBuilder class
 
@@ -131,7 +132,7 @@ class SceneBuilder:
                 reflectance=spectra.SpdSpectrum(filename=dh.get_ocean_spectrum_path())
             ),
         )
-        self._scene.add_shape(SceneBuilder.Names.EARTH, earth)
+        self._scene.add_shape(SceneBuilder.Names.EARTH.value, earth)
 
     def _build_sun(self, position_data: PositionData):
         sun = emitters.DirectionalEmitter(
@@ -139,7 +140,7 @@ class SceneBuilder:
             irradiance=spectra.SpdSpectrum(filename=dh.get_sun_spectrum_path()),
         )
 
-        self._scene.add_emitter(SceneBuilder.Names.SUN, sun)
+        self._scene.add_emitter(SceneBuilder.Names.SUN.value, sun)
 
     def _build_chaser(self, config: Config, position_data: PositionData):
         # TODO: Add option to choose between internal sensor data, user
@@ -158,7 +159,7 @@ class SceneBuilder:
             fov=config.sensor.camera.field_of_view,
             to_world=position_data.chaser_transform,
         )
-        self._scene.add_sensor(SceneBuilder.Names.CHASER, chaser)
+        self._scene.add_sensor(SceneBuilder.Names.CHASER.value, chaser)
 
     def _build_target(self, config: Config, position_data: PositionData):
         for part_name, part_description in config.parts.items():
@@ -174,17 +175,16 @@ class SceneBuilder:
                 to_world=position_data.target_transform,
                 filename=part_description.file,
                 material=mesh_material,
-                material_name=f"{part_name}_material",
             )
 
             self._scene.add_shape(part_name, mesh)
 
     def update_positions(self, config: Config, position_data: PositionData) -> dict[str, Any]:
         d = self._scene.asdict()
-        d[SceneBuilder.Names.EARTH]["to_world"] = position_data.earth_transform
         d[SceneBuilder.Names.SUN]["direction"] = position_data.sun_direction_vector
+        d[SceneBuilder.Names.EARTH]["to_world"] = position_data.earth_transform
         d[SceneBuilder.Names.CHASER]["to_world"] = position_data.chaser_transform
-        for part_name,_ in config.parts.items():
+        for part_name in config.parts.keys():
             d[part_name]["to_world"] = position_data.target_transform
         return d
 

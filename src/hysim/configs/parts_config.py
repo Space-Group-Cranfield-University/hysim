@@ -5,7 +5,7 @@ from pydantic.dataclasses import dataclass
 from typing import Optional
 from typing_extensions import Self
 
-from hysim.configs.constants import ConfigType
+from hysim.util.constants import ConfigType
 
 
 @dataclass(frozen=True)

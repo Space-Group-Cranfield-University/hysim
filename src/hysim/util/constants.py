@@ -1,5 +1,5 @@
-from strenum import StrEnum
 import mitsuba as mi
+from hysim.util.strenum import StrEnum
 
 
 class ConfigType(StrEnum):

@@ -6,7 +6,7 @@ from rickle import BaseRickle
 import logging
 
 from hysim.configs.case_config import CaseConfig
-from hysim.configs.constants import ConfigType, ImagingMode, OutputFormat
+from hysim.util.constants import ConfigType, ImagingMode, OutputFormat
 from hysim.configs.materials_config import MaterialsConfig
 from hysim.configs.mission_config import MissionConfig
 from hysim.configs.sensor_config import SensorConfig

@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic.dataclasses import dataclass
 
-from hysim.configs.constants import ConfigType, ImagingMode
+from hysim.util.constants import ConfigType, ImagingMode
 
 
 @dataclass(frozen=True)

@@ -1,22 +1,13 @@
-from typing import TypeVar, Literal, Annotated, Generic, Any
-import mitsuba as mi
+from typing import TypeVar, Literal, Generic, Any
+import hysim.util.mitsuba_types as mit
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 # Type aliases
-if mi.variant() is None:
-    try:
-        from mitsuba.scalar_rgb import ScalarTransform4f as Transform, Vector3f as Vector
-    except ImportError:
-        import importlib
-
-        _mitsuba = importlib.import_module("mitsuba." + mi.variants()[0])
-        Transform = _mitsuba.ScalarTransform4f
-        Vector = _mitsuba.Vector3f
-else:
-    Transform = mi.ScalarTransform4f
-    Vector = mi.Vector3f
+Transform = mit.Transform
+Vector = mit.Vector
 
 Discriminator = Field(discriminator="type")
+
 
 # Need to enforce abstract class without an abstract method implementation
 class MitsubaObject(BaseModel):
@@ -51,7 +42,6 @@ class NamedObjectsMixin(BaseModel, Generic[_NamedMitsubaObject]):
     to easily apply them to the object in question"""
 
     model_config = ConfigDict(extra="allow")
-    __pydantic_extra__: dict[str, Annotated[_NamedMitsubaObject, Discriminator]] = {}
 
     # Need to better support if the name is already used,
     def _add_item(self, name: str, item: _NamedMitsubaObject):
