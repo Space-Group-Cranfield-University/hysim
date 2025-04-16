@@ -41,6 +41,7 @@ class OutputFormat(StrEnum):
 
 
 class PositionFormat(StrEnum):
-    STATE = "state"
+    STATE_ECI = "state"
+    STATE_LVLH = "lvlh"
     KEPLERIAN = "kep"
     TLE = "tle"

@@ -58,17 +58,12 @@ class Config:
         ConfigType.MATERIAL: MaterialsConfig,
     }
 
-    _case_directory: str
-    _directories: Set[str] = set()
-    _sensor_spectrum_path: str
-
-    _has_error: bool = False
-
     def __init__(self, case_directory: Path) -> None:
         # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
         self._case_directory = str(case_directory)
         _case_files: dict[str, str] = {}
+        self._directories: Set[str] = set()
 
         yaml_ext = {".yml", ".yaml" ".json", ".toml"}
         content_ext = {".spd", ".ply"}

@@ -8,6 +8,7 @@ from functools import cache
 from typing import Literal, NamedTuple
 
 import numpy as np
+import numpy.typing as npt
 import spiceypy as spice
 
 from hysim.util.constants import PositionFormat
@@ -19,9 +20,9 @@ import mitsuba as mi
 MVector = mit.Vector
 MTransform = mit.Transform
 
-NVector = np.ndarray[tuple[Literal[3]], np.ScalarType]
-NStateVector = np.ndarray[tuple[Literal[6]], np.ScalarType]
-NRotationMatrix = np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
+NVector = npt.NDArray[np.float64] #  np.ndarray[tuple[Literal[3]], np.ScalarType]
+NStateVector = npt.NDArray[np.float64] # np.ndarray[tuple[Literal[6]], np.ScalarType]
+NRotationMatrix = npt.NDArray[np.float64] # np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
 
 
 # def calculate_eccentric_anomaly(
@@ -222,8 +223,8 @@ class PositionData:
     class StateVectors:
         """Calculates the state vectors of the Earth, Sun, Target and Chaser.
         All state vectors are in ECI frame. Unless the attribute
-        ChaserSpacecraft.is_lvlh is true, in which case the chaser are in the LVLH
-        relative to the target
+        ChaserSpacecraft.position_frame == PositionFormat.LVLH, in which case the
+        chaser are in LVLH relative to the target.
 
         Attributes
         ----------
@@ -244,10 +245,7 @@ class PositionData:
             self.earth: NStateVector = np.zeros(6, dtype=np.float64)
             self.target: NStateVector = self._convert_input(mission_config.target)
 
-            if (
-                mission_config.chaser.position_frame == PositionFormat.STATE
-                and mission_config.chaser.is_lvlh
-            ):
+            if mission_config.chaser.position_frame == PositionFormat.STATE_LVLH:
                 self.chaser: NStateVector = self._chaser_lvlh(mission_config.target)
             else:
                 self.chaser: NStateVector = self._convert_input(mission_config.chaser)
@@ -269,7 +267,7 @@ class PositionData:
                 Orbit state vectors
             """
             # TODO: validate spacecraft.position matches respective PositionFormat
-            if spacecraft.position_frame == PositionFormat.STATE:
+            if spacecraft.position_frame == PositionFormat.STATE_ECI:
                 return np.array(spacecraft.position)
             elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
                 return kepler_to_state(spacecraft.position, self.epoch.value)
@@ -285,7 +283,7 @@ class PositionData:
             the chaser satellite.
             """
             mean_motion: float # rad/s
-            if target.position_frame == PositionFormat.STATE:
+            if target.position_frame == PositionFormat.STATE_ECI:
                 orbital_elements = spice.oscltx(
                     self.target / 1000.0, self.epoch.value, mu_earth()
                 )
@@ -330,7 +328,7 @@ class PositionData:
         self._target_position = self._eci_to_lvlh(self._state_vectors.target)
 
         chaser = mission_config.chaser
-        if chaser.position_frame == PositionFormat.STATE and chaser.is_lvlh:
+        if chaser.position_frame == PositionFormat.STATE_LVLH:
             self._chaser_position = self._state_vectors.chaser[:3]
         else:
             self._chaser_position = self._eci_to_lvlh(self._state_vectors.chaser)
@@ -373,7 +371,7 @@ class PositionData:
         position: NVector, attitude: list[float]
     ) -> MTransform:
         return (
-            mi.ScalarTransform4f()
+            MTransform()
             .translate(position)
             .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
             .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
@@ -383,7 +381,7 @@ class PositionData:
     @property
     def earth_transform(self) -> MTransform:
         """Returns the mitsuba transformation matrix for the Earth"""
-        return mi.ScalarTransform4f().translate(self._earth_position)
+        return MTransform().translate(self._earth_position)
 
     @property
     def target_transform(self) -> MTransform:
@@ -396,7 +394,7 @@ class PositionData:
     def chaser_transform(self) -> MTransform:
         """Returns the mitsuba transformation matrix for the chaser"""
         if self._mission_config.chaser.is_lookat:
-            return mi.ScalarTransform4f().look_at(
+            return MTransform().look_at(
                 origin=self._chaser_position,
                 target=self._target_position,
                 up=[0, 0, -1],  # Assumed +z is nadir
