@@ -1,5 +1,5 @@
-from strenum import StrEnum
 import mitsuba as mi
+from hysim.util.strenum import StrEnum
 
 
 class ConfigType(StrEnum):
@@ -41,6 +41,7 @@ class OutputFormat(StrEnum):
 
 
 class PositionFormat(StrEnum):
-    STATE = "state"
+    STATE_ECI = "state"
+    STATE_LVLH = "lvlh"
     KEPLERIAN = "kep"
     TLE = "tle"

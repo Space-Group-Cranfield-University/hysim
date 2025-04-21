@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import Field
 from pydantic.dataclasses import dataclass
 
-from hysim.configs.constants import ConfigType, OutputFormat, MitsubaVariant
+from hysim.util.constants import ConfigType, OutputFormat, MitsubaVariant
 from hysim.mitsuba.integrators import Integrators
 from hysim.mitsuba.samplers import Samplers
 

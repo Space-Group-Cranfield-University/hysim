@@ -1,10 +1,14 @@
+from typing import Any
+
 import numpy as np
 import logging
 
-from hysim.configs.config import Config
-from hysim.configs.constants import ImagingMode
+from hysim.util.strenum import StrEnum
 
-from hysim.frame_transforms import ScenePositionData
+from hysim.configs.config import Config
+from hysim.util.constants import ImagingMode
+
+from hysim.frame_transforms import PositionData
 from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (
@@ -63,8 +67,8 @@ def _spectrum_from_path(
             raise TypeError("Too many columns for hyperspectral data")
         for i, _ in enumerate(wavelengths[1:], start=1):
             band = spectra.IrregularSpectrum(
-                wavelengths=wavelengths[i - 1: i + 1],
-                values=sensitivities[i - 1: i + 1],
+                wavelengths=wavelengths[i - 1 : i + 1],
+                values=sensitivities[i - 1 : i + 1],
             )
             # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
             name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
@@ -91,7 +95,13 @@ class SceneBuilder:
         data to an .exr file in the OutputHandler class.
     """
 
-    def __init__(self, config: Config, position_data: ScenePositionData):
+    # Mitsuba object names:
+    class Names(StrEnum):
+        EARTH = "earth_mesh"
+        SUN = "sun_emitter"
+        CHASER = "chaser_sensor"
+
+    def __init__(self, config: Config, position_data: PositionData):
         """Initializes the SceneBuilder class
 
         Parameters
@@ -99,22 +109,22 @@ class SceneBuilder:
         config : Config
             Object containing user input data
 
-        position_data : ScenePositionData
+        position_data : PositionData
             Scene objects positional data
 
         """
-        logging.debug("Building Integrator")
         self._scene = scene.Scene(integrator=config.case.integrator)
-        logging.debug("Building Earth")
+        logging.debug("Building the Earth")
         self._build_earth(position_data)
-        logging.debug("Building Sun")
+        logging.debug("Building the Sun")
         self._build_sun(position_data)
-        logging.debug("Building Chaser")
+        logging.debug("Building the chaser")
         self._build_chaser(config, position_data)
-        logging.debug("Building Target")
+        logging.debug("Building the target")
         self._build_target(config, position_data)
 
-    def _build_earth(self, position_data: ScenePositionData):
+
+    def _build_earth(self, position_data: PositionData):
         earth = shapes.PlyMesh(
             to_world=position_data.earth_transform,
             filename=dh.get_earth_mesh_path(),
@@ -122,17 +132,17 @@ class SceneBuilder:
                 reflectance=spectra.SpdSpectrum(filename=dh.get_ocean_spectrum_path())
             ),
         )
-        self._scene.add_shape("earth_mesh", earth)
+        self._scene.add_shape(SceneBuilder.Names.EARTH.value, earth)
 
-    def _build_sun(self, position_data: ScenePositionData):
+    def _build_sun(self, position_data: PositionData):
         sun = emitters.DirectionalEmitter(
             direction=position_data.sun_direction_vector,
             irradiance=spectra.SpdSpectrum(filename=dh.get_sun_spectrum_path()),
         )
 
-        self._scene.add_emitter("sun_emitter", sun)
+        self._scene.add_emitter(SceneBuilder.Names.SUN.value, sun)
 
-    def _build_chaser(self, config: Config, position_data: ScenePositionData):
+    def _build_chaser(self, config: Config, position_data: PositionData):
         # TODO: Add option to choose between internal sensor data, user
         self._spectra = _spectrum_from_path(
             config.sensor_spectrum_path, config.sensor.imaging_mode
@@ -149,26 +159,34 @@ class SceneBuilder:
             fov=config.sensor.camera.field_of_view,
             to_world=position_data.chaser_transform,
         )
-        self._scene.add_sensor("chaser_sensor", chaser)
+        self._scene.add_sensor(SceneBuilder.Names.CHASER.value, chaser)
 
-    def _build_target(self, config: Config, position_data: ScenePositionData):
+    def _build_target(self, config: Config, position_data: PositionData):
         for part_name, part_description in config.parts.items():
-            mesh_material = None
-
             if part_description.user_material:
                 mesh_material = config.user_materials[part_description.user_material]
             elif part_description.database_material:
                 mesh_material = dh.get_database_material(
                     part_description.database_material
                 )
+            else:
+                raise ValueError("No material defined for part")
             mesh = shapes.PlyMesh(
                 to_world=position_data.target_transform,
                 filename=part_description.file,
                 material=mesh_material,
-                material_name=f"{part_name}_material",
             )
 
             self._scene.add_shape(part_name, mesh)
+
+    def update_positions(self, config: Config, position_data: PositionData) -> dict[str, Any]:
+        d = self._scene.asdict()
+        d[SceneBuilder.Names.SUN]["direction"] = position_data.sun_direction_vector
+        d[SceneBuilder.Names.EARTH]["to_world"] = position_data.earth_transform
+        d[SceneBuilder.Names.CHASER]["to_world"] = position_data.chaser_transform
+        for part_name in config.parts.keys():
+            d[part_name]["to_world"] = position_data.target_transform
+        return d
 
     @property
     def scene(self) -> scene.Scene:

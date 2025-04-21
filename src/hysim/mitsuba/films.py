@@ -1,9 +1,9 @@
 """Films adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_films.html
 """
-from typing import Literal, Iterable, Union
+from typing import Literal, Iterable, Union, Annotated
 
-from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin
+from hysim.mitsuba.abc import MitsubaObject, NamedObjectsMixin, Discriminator
 from hysim.mitsuba.spectra import Spectra
 
 
@@ -17,6 +17,8 @@ class Film(MitsubaObject):
 
 class SpectralFilm(Film, NamedObjectsMixin[Spectra]):
     type: Literal["specfilm"] = "specfilm"
+
+    __pydantic_extra__ = dict[str, Annotated[Spectra, Discriminator]]
 
     def set_spectrum(self, spectra: Iterable[tuple[str, Spectra]]):
         for name, spectrum in spectra:
