@@ -14,7 +14,6 @@ import spiceypy as spice
 from hysim.util.constants import PositionFormat
 import hysim.configs.mission_config as mc
 import hysim.util.mitsuba_types as mit
-import mitsuba as mi
 
 # Types
 MVector = mit.Vector

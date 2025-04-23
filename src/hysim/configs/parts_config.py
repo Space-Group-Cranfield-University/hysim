@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from pydantic import Field, model_validator
+from pydantic import model_validator
 from pydantic.dataclasses import dataclass
 from typing import Optional
 from typing_extensions import Self
@@ -12,11 +10,11 @@ from hysim.util.constants import ConfigType
 class Part:
     file: str
     """The mesh file"""
-    database_material: Optional[str] = Field(default=None)
-    user_material: Optional[str] = Field(default=None)
+    database_material: Optional[str] = None
+    user_material: Optional[str] = None
 
     @model_validator(mode="after")
-    def mutually_exclusive(self) -> Self:
+    def _mutually_exclusive(self) -> Self:
         if (self.database_material and self.user_material) or (
             not self.database_material and not self.user_material
         ):

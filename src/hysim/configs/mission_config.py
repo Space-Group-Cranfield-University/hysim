@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Union, Literal, Generic, TypeVar
 from typing_extensions import Self
 
