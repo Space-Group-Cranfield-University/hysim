@@ -1,8 +1,9 @@
 """Samplers adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_samplers.html"""
-from typing import Literal, Union
+from typing import Literal
 
-from hysim.mitsuba.abc import MitsubaObject
+from .abc import MitsubaObject
+
 
 class Sampler(MitsubaObject):
     sample_count: int
@@ -18,6 +19,3 @@ class IndependentSampler(Sampler):
 
 class MultiJitterSampler(Sampler):
     type: Literal["multijitter"] = "multijitter"
-
-
-Samplers = Union[StratifiedSampler, IndependentSampler, MultiJitterSampler]

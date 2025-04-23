@@ -2,16 +2,13 @@
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_integrators.html#
 
 """
+from typing import Literal
 
-from typing import Literal, Union
-
-from hysim.mitsuba.abc import MitsubaObject
+from .abc import MitsubaObject
 
 
 class Integrator(MitsubaObject):
     """Abstract base class for Mitsuba integrator objects"""
-
-    pass
 
 
 class PathTracer(Integrator):
@@ -25,5 +22,3 @@ class DirectIntegrator(Integrator):
     type: Literal["direct"] = "direct"
     hide_emitters: bool = False
 
-
-Integrators = Union[PathTracer, DirectIntegrator]

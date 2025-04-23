@@ -1,16 +1,15 @@
 """Spectra adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_spectra.html"""
-from typing import Literal, Union, Any
+
+from typing import Literal, Any, Optional
 
 from pydantic import field_serializer, field_validator
 
-from hysim.mitsuba.abc import MitsubaObject
+from .abc import MitsubaObject
 
 
 class Spectrum(MitsubaObject):
     """Abstract base class for Mitsuba spectrum objects"""
-
-    pass
 
 
 class IrregularSpectrum(Spectrum):
@@ -38,4 +37,8 @@ class SpdSpectrum(Spectrum):
     filename: str
 
 
-Spectra = Union[IrregularSpectrum, SpdSpectrum]  # create_type_alias(Spectrum)
+class UniformSpectrum(Spectrum):
+    type: Literal["uniform"] = "uniform"
+    value: float
+    wavelength_min: Optional[float] = None
+    wavelength_max: Optional[float] = None

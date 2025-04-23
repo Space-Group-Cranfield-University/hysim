@@ -1,36 +1,36 @@
 """BSDFs (materials) adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#
 """
+from typing import Union, Literal
 
-from typing import Literal, Union
-
-from hysim.mitsuba.abc import MitsubaObject, Discriminator
-from hysim.mitsuba.spectra import Spectra
+from .abc import MitsubaObject
+from .spectra import Spectrum as _Spectrum
+from .textures import Texture as _Texture
 
 
 class BSDF(MitsubaObject):
     """Abstract base class for Mitsuba BSDF objects"""
 
-    pass
-
 
 class DiffuseMaterial(BSDF):
     type: Literal["diffuse"] = "diffuse"
-    # filename: str # for texture
-    reflectance: Spectra = Discriminator
+    reflectance: Union[_Spectrum, _Texture]
 
 
 class RoughConductorMaterial(BSDF):
     type: Literal["roughconductor"] = "roughconductor"
-    eta: Spectra = Discriminator
-    k: Spectra = Discriminator
+    eta: _Spectrum
+    k: _Spectrum
     alpha: float
 
 
 class TwoSidedBRDF(BSDF):
     type: Literal["twosided"] = "twosided"
-    material: Union[DiffuseMaterial, RoughConductorMaterial] = Discriminator
+    material: BSDF
 
 
-# Move to hysim.mitsuba.typing?
-BSDFs = Union[DiffuseMaterial, RoughConductorMaterial, TwoSidedBRDF]
+class BlendedMaterial(BSDF):
+    type: Literal["blendbsdf"] = "blendbsdf"
+    weight: Union[float, _Texture]
+    bsdf_0: BSDF
+    bsdf_1: BSDF

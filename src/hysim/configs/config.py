@@ -11,7 +11,7 @@ from hysim.configs.materials_config import MaterialsConfig
 from hysim.configs.mission_config import MissionConfig
 from hysim.configs.sensor_config import SensorConfig
 from hysim.configs.parts_config import PartsConfig, Part
-from hysim.mitsuba.bsdfs import BSDFs
+from hysim.mitsuba.bsdfs import BSDF
 
 def _exit_on_error():
     logging.info("Invalid configuration file. Exiting...")
@@ -155,7 +155,7 @@ class Config:
         return self._configs[ConfigType.PARTS].components
 
     @property
-    def user_materials(self) -> dict[str, BSDFs]:
+    def user_materials(self) -> dict[str, BSDF]:
         """Dictionary of user defined materials
 
         Returns

@@ -1,10 +1,11 @@
 """Sensors adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_sensors.html"""
-from typing import Union, Literal
 
-from hysim.mitsuba.abc import MitsubaObject, Transform
-from hysim.mitsuba.films import Films
-from hysim.mitsuba.samplers import Samplers
+from typing import Literal
+
+from .abc import MitsubaObject, Transform
+from .films import Film as _Film
+from .samplers import Sampler as _Sampler
 
 
 class Sensor(MitsubaObject):
@@ -13,10 +14,10 @@ class Sensor(MitsubaObject):
     near_clip: float = 0.01
     far_clip: float = 1e20
     to_world: Transform
-    film: Films
+    film: _Film
     fov: float
     fov_axis: str = "x"
-    sampler: Samplers
+    sampler: _Sampler
 
 
 class ThinLensCamera(Sensor):
@@ -28,6 +29,3 @@ class ThinLensCamera(Sensor):
 
 class PerspectiveCamera(Sensor):
     type: Literal["perspective"] = "perspective"
-
-
-Sensors = Union[ThinLensCamera, PerspectiveCamera]
