@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     model_validator,
     TypeAdapter,
-    ValidatorFunctionWrapHandler,
+    ValidatorFunctionWrapHandler as _Handler,
 )
 
 import hysim.util.mitsuba_types as mit
@@ -21,9 +21,10 @@ Vector = mit.Vector
 class MitsubaObject(BaseModel):
     """Abstract base class for Mitsuba objects"""
 
-    _subclasses: ClassVar[dict[str, type[MitsubaObject]]] = {}
+    _subclasses: ClassVar[set[type[MitsubaObject]]] = set()
     _abstract_subclasses: ClassVar[set[type[MitsubaObject]]] = set()
     _type_adapter: ClassVar[TypeAdapter] = None
+    _dirty: ClassVar[bool] = True  # Used to check if _subclasses has changed
 
     def __new__(cls, *args, **kwargs):
         if cls in MitsubaObject._abstract_subclasses:
@@ -35,19 +36,21 @@ class MitsubaObject(BaseModel):
     # https://github.com/pydantic/pydantic/issues/7366
     @model_validator(mode="wrap")
     @classmethod
-    def _parse_into_subclass(
-        cls, v: Any, handler: ValidatorFunctionWrapHandler
-    ) -> MitsubaObject:
+    def _parse_into_subclass(cls, v: Any, handler: _Handler) -> MitsubaObject:
         if cls in MitsubaObject._abstract_subclasses:
-            if MitsubaObject._type_adapter is None:
-                MitsubaObject._type_adapter = TypeAdapter(
-                    Annotated[
-                        Union[tuple(MitsubaObject._subclasses.values())],
-                        Field(discriminator="type"),
-                    ]
-                )
+            if MitsubaObject._dirty:
+                cls._update_type_adapter()
             return MitsubaObject._type_adapter.validate_python(v)
         return handler(v)
+
+    @classmethod
+    def _update_type_adapter(cls):
+        MitsubaObject._type_adapter = TypeAdapter(
+            Annotated[
+                Union[tuple(MitsubaObject._subclasses)], Field(discriminator="type")
+            ]
+        )
+        MitsubaObject._dirty = False
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
@@ -55,7 +58,8 @@ class MitsubaObject(BaseModel):
         if key is None:  # (is an "abstract" class)
             MitsubaObject._abstract_subclasses.add(cls)
         else:
-            MitsubaObject._subclasses[key.default] = cls
+            MitsubaObject._subclasses.add(cls)
+            MitsubaObject._dirty = True
 
     @field_validator("to_world", "direction", mode="plain", check_fields=False)
     @classmethod
