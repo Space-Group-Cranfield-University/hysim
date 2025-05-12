@@ -4,31 +4,47 @@ Contains Database Enums to define data paths and functions to
 handle data retrieval.
 """
 
-import functools
+from functools import cache
 from importlib import resources
 from enum import Enum
+from typing import Any
 
 from hysim.util.strenum import StrEnum
 
 import json
 
-from hysim.mitsuba.bsdfs import TwoSidedBRDF
+from hysim.mitsuba.bsdfs import TwoSidedBRDF, DiffuseMaterial
 
 
 # ===== IO Error Handling ===== #
 class DataFileNotFoundError(Exception):
     """Exception for handling file not found in database"""
 
-    pass
-
 
 class ConfigFileMissing(Exception):
     """Exception to handle missing configuration file"""
 
-    pass
-
 
 # ===== DATABASE ===== #
+def get_data_path(directory: str, file: str) -> str:
+    """Get unix style path of data
+
+    Parameters
+    ----------
+    directory : str
+        Package location (dot notation) of data as a string
+    file : str
+        File name of data
+
+    Returns
+    -------
+    str
+        Path to data
+    """
+    with resources.path(directory, file) as path:
+        return str(path)
+
+
 class Kernels(Enum):
     """Enum containing path and files for SpiceyPy kernels"""
 
@@ -60,14 +76,17 @@ class LightSourceData(StrEnum):
 class EarthData(StrEnum):
     """Enum of path and file names of Earth data"""
 
-    PATH = "hysim.data.earth_model"
     SOIL_SPECTRUM = "soil.spd"
     OCEAN_SPECTRUM = "ocean.spd"
-    MESH = "earth.ply"
+    # MESH = "earth.ply"
     SURFACE_BITMAP = "earth.jpg"
 
+    def __new__(cls, file):
+        path = "hysim.data.earth_model"
+        return str.__new__(cls, get_data_path(path, file))
 
-def get_kernel_paths():
+
+def kernel_paths():
     """Retrieves all kernel file paths from kernel database
 
     Returns
@@ -81,7 +100,7 @@ def get_kernel_paths():
     ]
 
 
-def read_json_package_data(path: str, file: str):
+def read_json_package_data(path: str, file: str) -> dict[str, Any]:
     """Reads json file
 
     Parameters
@@ -101,7 +120,7 @@ def read_json_package_data(path: str, file: str):
             return json.loads(j.read())
 
 
-@functools.cache
+@cache
 def load_material_database() -> dict[str, TwoSidedBRDF]:
     """Loads the material database caches it and returns it as
     a dictionary
@@ -114,58 +133,35 @@ def load_material_database() -> dict[str, TwoSidedBRDF]:
     materials = read_json_package_data(MaterialsData.PATH, MaterialsData.MATERIALS_FILE)
     for material_name, material_dict in materials.items():
         mat = TwoSidedBRDF(**material_dict)
-        mat.material.reflectance.filename = get_data_path(
-            MaterialsData.PATH, mat.material.reflectance.filename
-        )
+        if isinstance(mat.material, DiffuseMaterial):
+            mat.material.reflectance.filename = get_data_path(
+                MaterialsData.PATH, mat.material.reflectance.filename
+            )
+        else:
+            raise ValueError(f"Invalid material type for {material_name} in database")
         materials[material_name] = mat
     return materials
 
 
 def get_database_material(material_name: str) -> TwoSidedBRDF:
     """Retrieves material dictionary from database"""
-    return load_material_database()[material_name]
+    material = load_material_database().get(material_name)
+    if material is None:
+        raise DataFileNotFoundError(f"Material {material_name} not found in database")
+    return material
 
 
-def get_data_path(directory: str, file: str) -> str:
-    """Get unix style path of data
-
-    Parameters
-    ----------
-    directory : str
-        Package location (dot notation) of data as a string
-    file : str
-        File name of data
-
-    Returns
-    -------
-    str
-        Path to data
-    """
-    with resources.path(directory, file) as path:
-        return str(path)
-
-
-def get_earth_mesh_path() -> str:
-    return get_data_path(EarthData.PATH, EarthData.MESH)
-
-
-def get_ocean_spectrum_path() -> str:
-    return get_data_path(EarthData.PATH, EarthData.OCEAN_SPECTRUM)
-
-
-def get_sun_spectrum_path() -> str:
+def sun_spectrum_path() -> str:
     return get_data_path(LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM)
 
 
-def list_defined_materials():
-    """Returns list of materials inside material database
-
-    NOT IMPLEMENTED
-    """
-    raise NotImplementedError()
+def defined_materials() -> list[str]:
+    """Returns list of materials inside material database"""
+    materials = load_material_database()
+    return list(materials.keys())
 
 
-def list_defined_sensors():
+def defined_sensors():
     """Returns list of sensors in database
 
     Raises
@@ -176,7 +172,7 @@ def list_defined_sensors():
     raise NotImplementedError()
 
 
-def list_defined_light_sources():
+def defined_light_sources():
     """Returns list of light sources in database
 
     Raises

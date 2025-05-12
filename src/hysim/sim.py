@@ -112,26 +112,23 @@ class RenderController:
 
     def render(self) -> mit.Tensor:
         logging.info("Adding case directory search paths to Mitsuba")
-        file_resolver = mi.Thread.thread().file_resolver()
 
+        file_resolver = mi.Thread.thread().file_resolver()
         for path in self._config.directories:
             file_resolver.append(path)
             logging.debug(f"{chr(0x02523)}{chr(0x02501)} {path}")
-        else:
-            logging.debug(f"{chr(0x02517)}{chr(0x02501)} {path}")
         del file_resolver
 
-        # logging.info("Loading scene(s) into Mitsuba")
         logging.info("Running Mitsuba")
+        t0 = get_time()
         self.output = self.initial_frame.render() * self.dt
 
-        t0 = get_time()
         for i, instance in enumerate(self.frames[1:]):
             # logging.info(chr(0x02501))
             self.output += instance.render(i + 1) * self.dt
         t = (get_time() - t0) / 1e9
         duration = ""
-        if round(t, 1) > 0 and self.frame_count > 1:
+        if round(t, 1) > 0: # and self.frame_count > 1:
             duration = f" (took {t:.2f}s)"
         logging.info(f"Renders complete.{duration}")
         return self.output
@@ -166,7 +163,7 @@ def run_sim(run_directory: Path):
     config = Config(run_directory)
 
     logging.info("Setting up SPICE kernels")
-    spice.furnsh(dh.get_kernel_paths())
+    spice.furnsh(dh.kernel_paths())
 
     mi.set_variant(config.case.mitsuba_variant)
 

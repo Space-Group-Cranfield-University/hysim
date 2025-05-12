@@ -8,7 +8,7 @@ from hysim.util.strenum import StrEnum
 from hysim.configs.config import Config
 from hysim.util.constants import ImagingMode
 
-from hysim.frame_transforms import PositionData
+from hysim.frame_transforms import PositionData, earth_radius
 from hysim.data import data_handling as dh, spd_reader as spdr
 
 from hysim.mitsuba import (
@@ -19,6 +19,7 @@ from hysim.mitsuba import (
     scene,
     bsdfs,
     spectra,
+    textures,
 )
 
 
@@ -123,13 +124,22 @@ class SceneBuilder:
         logging.debug("Building the target")
         self._build_target(config, position_data)
 
-
     def _build_earth(self, position_data: PositionData):
-        earth = shapes.PlyMesh(
+        earth = shapes.Sphere(
+            radius=earth_radius(),
             to_world=position_data.earth_transform,
-            filename=dh.get_earth_mesh_path(),
-            material=bsdfs.DiffuseMaterial(
-                reflectance=spectra.SpdSpectrum(filename=dh.get_ocean_spectrum_path())
+            material=bsdfs.BlendedMaterial(
+                weight=textures.BitmapTexture(
+                    filename=dh.EarthData.SURFACE_BITMAP, wrap_mode="clamp"
+                ),
+                bsdf_0=bsdfs.DiffuseMaterial(
+                    reflectance=spectra.SpdSpectrum(filename=dh.EarthData.SOIL_SPECTRUM)
+                ),
+                bsdf_1=bsdfs.DiffuseMaterial(
+                    reflectance=spectra.SpdSpectrum(
+                        filename=dh.EarthData.OCEAN_SPECTRUM
+                    )
+                ),
             ),
         )
         self._scene.add_shape(SceneBuilder.Names.EARTH.value, earth)
@@ -137,7 +147,7 @@ class SceneBuilder:
     def _build_sun(self, position_data: PositionData):
         sun = emitters.DirectionalEmitter(
             direction=position_data.sun_direction_vector,
-            irradiance=spectra.SpdSpectrum(filename=dh.get_sun_spectrum_path()),
+            irradiance=spectra.SpdSpectrum(filename=dh.sun_spectrum_path()),
         )
 
         self._scene.add_emitter(SceneBuilder.Names.SUN.value, sun)

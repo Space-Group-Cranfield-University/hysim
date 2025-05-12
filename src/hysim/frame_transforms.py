@@ -70,15 +70,21 @@ NRotationMatrix = npt.NDArray[np.float64] # np.ndarray[tuple[Literal[3], Literal
 
 @cache
 def mu_earth() -> float:
+    """Returns the gravitational parameter of the Earth in km^3/s^2"""
     return spice.bodvrd("EARTH", "GM", 1)[1].item()
 
 
 @cache
-def geophysical_data():
+def geophysical_data() -> list[float]:
     return [
         spice.bodvrd("EARTH", geoph_data, 1)[1].item()
         for geoph_data in ["J2", "J3", "J4", "KE", "QO", "SO", "ER", "AE"]
     ]
+
+
+def earth_radius() -> float:
+    """Returns the radius of the Earth in meters"""
+    return geophysical_data()[6] * 1000.0
 
 
 def magnitude(array: np.array) -> float:
@@ -223,7 +229,7 @@ class PositionData:
         """Calculates the state vectors of the Earth, Sun, Target and Chaser.
         All state vectors are in ECI frame. Unless the attribute
         ChaserSpacecraft.position_frame == PositionFormat.LVLH, in which case the
-        chaser are in LVLH relative to the target.
+        chaser is in LVLH relative to the target.
 
         Attributes
         ----------
@@ -300,6 +306,10 @@ class PositionData:
                 mean_motion = tle[8] / 60.0
             else:
                 raise ValueError("Invalid position format")
+            # mu = mu_earth() * 1e9
+            # orbital_energy = magnitude(self.target[3:]) ** 2 / 2 - mu / magnitude(self.target[:3])
+            # semi_major_axis = -mu / (2 * orbital_energy)
+            # mean_motion = np.sqrt(mu / (semi_major_axis ** 3))
             return clohessy_wiltshire(self.target, mean_motion, self.epoch.offset)
 
         def _get_sun_location(self) -> NStateVector:
