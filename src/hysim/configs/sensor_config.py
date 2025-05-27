@@ -15,8 +15,8 @@ class Camera:
 
 @dataclass(frozen=True)
 class Film:
-    width: int
-    height: int
+    width: PositiveInt
+    height: PositiveInt
 
 
 @dataclass(frozen=True)

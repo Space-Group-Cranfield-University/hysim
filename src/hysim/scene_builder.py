@@ -128,19 +128,25 @@ class SceneBuilder:
         earth = shapes.Sphere(
             radius=earth_radius(),
             to_world=position_data.earth_transform,
-            material=bsdfs.BlendedMaterial(
-                weight=textures.BitmapTexture(
-                    filename=dh.EarthData.SURFACE_BITMAP, wrap_mode="clamp"
-                ),
-                bsdf_0=bsdfs.DiffuseMaterial(
-                    reflectance=spectra.SpdSpectrum(filename=dh.EarthData.SOIL_SPECTRUM)
-                ),
-                bsdf_1=bsdfs.DiffuseMaterial(
-                    reflectance=spectra.SpdSpectrum(
-                        filename=dh.EarthData.OCEAN_SPECTRUM
-                    )
-                ),
-            ),
+            material=bsdfs.DiffuseMaterial(
+                reflectance=textures.BitmapTexture(
+                    filename=dh.EarthData.MAP_LOW_RES,
+                    wrap_mode="clamp"
+                )
+            )
+            # material=bsdfs.BlendedMaterial(
+            #     weight=textures.BitmapTexture(
+            #         filename=dh.EarthData.SURFACE_BITMAP, wrap_mode="clamp"
+            #     ),
+            #     bsdf_0=bsdfs.DiffuseMaterial(
+            #         reflectance=spectra.SpdSpectrum(filename=dh.EarthData.SOIL_SPECTRUM)
+            #     ),
+            #     bsdf_1=bsdfs.DiffuseMaterial(
+            #         reflectance=spectra.SpdSpectrum(
+            #             filename=dh.EarthData.OCEAN_SPECTRUM
+            #         )
+            #     ),
+            # ),
         )
         self._scene.add_shape(SceneBuilder.Names.EARTH.value, earth)
 

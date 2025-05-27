@@ -80,6 +80,8 @@ class EarthData(StrEnum):
     OCEAN_SPECTRUM = "ocean.spd"
     # MESH = "earth.ply"
     SURFACE_BITMAP = "earth.jpg"
+    MAP_HIGH_RES = "earth_map_21600x10800.jpg"
+    MAP_LOW_RES = "earth_map_5400x2700.jpg"
 
     def __new__(cls, file):
         path = "hysim.data.earth_model"
