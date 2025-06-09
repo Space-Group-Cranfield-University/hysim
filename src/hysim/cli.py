@@ -22,6 +22,7 @@ def run_case(run_directory: str):
         case_directory = Path.cwd() / case_directory
 
     if case_directory.exists() is False:
+        logging.error(f"Case directory '{case_directory}' does not exist.")
         logging.error("Invalid path to case directory. Terminating Hysim")
         import sys
         sys.exit()

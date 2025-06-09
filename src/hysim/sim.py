@@ -9,11 +9,14 @@ handle Mitsuba.
 
 # Logging
 import logging
+
 from time import monotonic_ns as get_time
 from contextlib import contextmanager
+from typing import Final
 
 # Packages
 import mitsuba as mi
+import numpy as np
 import spiceypy as spice
 
 # I/O
@@ -24,10 +27,11 @@ from hysim.data import data_handling as dh
 import hysim.util.mitsuba_types as mit
 
 # Simulator
-from hysim import output_data
+from hysim import output_data as od
 from hysim import scene_builder as sb
 from hysim import frame_transforms as ft
 from hysim.configs.config import Config
+import hysim.configs.mission_config as mc
 
 
 class CustomMitsubaFormatter(mi.Formatter):
@@ -60,57 +64,55 @@ class CustomMitsubaFormatter(mi.Formatter):
 class RenderInstance:
     """Represents an instantaneous snapshot (a frame) of the scene at a specified epoch"""
 
-    def __init__(self, config: Config, epoch: ft.Epoch):
-        self.epoch = epoch
-        self._config = config
-        self.output: mit.Tensor = None
-        self.position_data: ft.PositionData = None
-        self.scene_dict = {}
-
-    def build_scene(self, scene_builder: sb.SceneBuilder):
-        self.position_data = ft.PositionData(self._config.mission, self.epoch)
-        self.scene_dict = scene_builder.update_positions(
-            self._config, self.position_data
-        )
+    def __init__(self, epoch: ft.Epoch, mission_config: mc.MissionConfig, scene_builder: sb.SceneBuilder):
+        self._output = None
+        self.epoch: Final = epoch
+        self.position_data: Final = ft.PositionData(mission_config, epoch)
+        self.scene_dict: Final = scene_builder.set_positions(self.position_data)
+        # logging.debug(f"Chaser ECI Coordinates: {self.position_data.chaser_position}")
+        # logging.info("Relative distance to target: %0.2fm", self.position_data.relative_distance)
+        # logging.debug("Final Scene Dictionary...")
+        # logging.debug(scene_builder.scene.asdict())
 
     def render(self, frame_index: int = 0) -> mit.Tensor:
         sim: mi.Scene = mi.load_dict(self.scene_dict)
         with CustomMitsubaFormatter.log(frame_index):
-            self.output = mi.render(sim)
-        return self.output
+            self._output = mi.render(sim)
+        return self._output
+
+    @property
+    def output(self) -> mit.Tensor:
+        return self._output
 
 
-class RenderController:
+class RenderController: # TODO: move to simulator/renders
     def __init__(self, config: Config):
-        self.output: mit.Tensor = None
+        self.scene_builder = sb.SceneBuilder(config)
+        self.output = mit.Tensor(np.zeros((
+            config.sensor.film.height,
+            config.sensor.film.width,
+            len(self.scene_builder.spectra)
+        )))
         self._config = config
 
         self.frame_count = config.sensor.camera.frame_count
         self.base_epoch = spice.str2et(config.mission.datetime)
         self.dt = config.sensor.camera.shutter_time / self.frame_count
-        self.frames = [
-            RenderInstance(config, ft.Epoch(self.base_epoch, self.dt * frame_index))
-            for frame_index in range(self.frame_count)
-        ]
-
-        self.initial_frame = self.frames[0]
-        logging.info("Calculating scene geometry from orbit data")
-        self.initial_frame.position_data = ft.PositionData(config.mission, self.initial_frame.epoch)
-        logging.info("Building initial scene geometry")
-        self.scene_builder = sb.SceneBuilder(config, self.initial_frame.position_data)
-        self.initial_frame.scene_dict = self.scene_builder.scene.asdict()
-
-    def build_scenes(self):
-        logging.info("Building remaining scenes")
-        for frame in self.frames[1:]:
-            frame.build_scene(self.scene_builder)
-            # logging.debug(f"Chaser ECI Coordinates: {frame.position_data.chaser_position}")
-            # logging.info("Relative distance to target: %0.2fm", frame.position_data.relative_distance)
-            # logging.debug("Final Scene Dictionary...")
-            # logging.debug(frame.scene_builder.scene.asdict())
-        logging.info("Scene geometry built")
+        self.frames = []
 
     def render(self) -> mit.Tensor:
+        logging.info("Building scene geometry")
+        self.scene_builder.build()
+
+        logging.info("Calculating scene positional data")
+        self.frames = [
+            RenderInstance(
+                ft.Epoch(self.base_epoch, self.dt * index),
+                self._config.mission,
+                self.scene_builder
+            )
+            for index in range(self.frame_count)
+        ]
         logging.info("Adding case directory search paths to Mitsuba")
 
         file_resolver = mi.Thread.thread().file_resolver()
@@ -121,11 +123,10 @@ class RenderController:
 
         logging.info("Running Mitsuba")
         t0 = get_time()
-        self.output = self.initial_frame.render() * self.dt
 
-        for i, instance in enumerate(self.frames[1:]):
+        for i, instance in enumerate(self.frames):
             # logging.info(chr(0x02501))
-            self.output += instance.render(i + 1) * self.dt
+            self.output += instance.render(i) * self.dt
         t = (get_time() - t0) / 1e9
         duration = ""
         if round(t, 1) > 0: # and self.frame_count > 1:
@@ -134,7 +135,7 @@ class RenderController:
         return self.output
 
 
-def run_sim(run_directory: Path):
+def run_sim(run_directory: Path): # TODO: move to cli
     """Runs a single simulator case
 
     The function is called by the entry script to run a
@@ -168,12 +169,11 @@ def run_sim(run_directory: Path):
     mi.set_variant(config.case.mitsuba_variant)
 
     render_control = RenderController(config)
-    render_control.build_scenes()
     render_control.render()
     # ------------------------------- #
     # Export Outputs
     # ------------------------------- #
-    output = output_data.OutputHandler(
+    output = od.OutputHandler(
         render_control.output, render_control.scene_builder, config
     )
     output.export_data()

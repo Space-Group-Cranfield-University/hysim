@@ -45,3 +45,11 @@ class PositionFormat(StrEnum):
     STATE_LVLH = "lvlh"
     KEPLERIAN = "kep"
     TLE = "tle"
+
+
+class SceneEntity(StrEnum):
+    """A list of entities that can be present in a scene"""
+    EARTH = "earth"
+    SUN = "sun"
+    TARGET = "target"
+    CHASER = "chaser"

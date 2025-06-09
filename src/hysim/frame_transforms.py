@@ -6,7 +6,7 @@ frames to the local vertical local horizontal frame of the target.
 
 from dataclasses import dataclass
 from functools import cache
-from typing import TypeVar, Generic, Final
+from typing import TypeVar, Generic, Final, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +14,7 @@ import spiceypy as spice
 
 import hysim.configs.mission_config as mc
 import hysim.util.mitsuba_types as mit
-from hysim.util.constants import PositionFormat
+from hysim.util.constants import PositionFormat, SceneEntity
 
 # Types
 MVector = mit.Vector
@@ -364,23 +364,7 @@ class PositionData:
     def _eci_to_target(self, state_vector: StateVector) -> NVector:
         return eci_to_frame(self._frame_transform, self.eci.target[:3], state_vector)
 
-    @property
-    def sun_direction_vector(self) -> MVector:
-        return MVector(self.lvlh.sun)
-
-    @property
-    def earth_transform(self) -> MTransform:
-        return self.transforms.earth
-
-    @property
-    def target_transform(self) -> MTransform:
-        return self.transforms.target
-
-    @property
-    def chaser_transform(self) -> MTransform:
-        return self.transforms.chaser
-
-    # def get_position(self, key: Literal["earth", "sun", "target", "chaser"]) -> Union[MTransform, MVector]:
-    #     if key == "sun":
-    #         return MVector(self._lvlh.sun)
-    #     return self._transforms.__dict__[key]
+    def get(self, key: SceneEntity) -> Union[MTransform, MVector]:
+        if key == SceneEntity.SUN:
+            return MVector(self.lvlh.sun)
+        return self.transforms.__dict__[key]
