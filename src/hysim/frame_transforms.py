@@ -4,25 +4,25 @@ Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
 
+from dataclasses import dataclass
 from functools import cache
-from typing import Literal, NamedTuple
+from typing import TypeVar, Generic, Final
 
 import numpy as np
 import numpy.typing as npt
 import spiceypy as spice
 
-from hysim.util.constants import PositionFormat
 import hysim.configs.mission_config as mc
 import hysim.util.mitsuba_types as mit
+from hysim.util.constants import PositionFormat
 
 # Types
 MVector = mit.Vector
 MTransform = mit.Transform
 
-NVector = npt.NDArray[np.float64] #  np.ndarray[tuple[Literal[3]], np.ScalarType]
-NStateVector = npt.NDArray[np.float64] # np.ndarray[tuple[Literal[6]], np.ScalarType]
-NRotationMatrix = npt.NDArray[np.float64] # np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
-
+NVector = npt.NDArray[np.float64]  #  np.ndarray[tuple[Literal[3]], np.ScalarType]
+StateVector = npt.NDArray[np.float64]  # np.ndarray[tuple[Literal[6]], np.ScalarType]
+RotationMatrix = npt.NDArray[np.float64]  # np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
 
 # def calculate_eccentric_anomaly(
 #     eccentricity: float, true_anomaly: float
@@ -87,8 +87,14 @@ def earth_radius() -> float:
     return geophysical_data()[6] * 1000.0
 
 
-def magnitude(array: np.array) -> float:
-    return np.linalg.norm(array).item()
+def magnitude(vector: npt.NDArray) -> float:
+    return np.linalg.norm(vector).item()
+
+
+def normalise(vector: npt.NDArray) -> npt.NDArray:
+    mag = magnitude(vector)
+    if mag == 0: return vector
+    return vector / mag
 
 
 def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> float:
@@ -109,7 +115,7 @@ def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) ->
     return semi_major_axis * np.abs(1 - eccentricity)
 
 
-def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
+def kepler_to_state(kep_elements: list[float], epoch: float, epoch_delta: float = 0.0) -> StateVector:
     """Performs calculations to convert keplerian elements to state
     in ECI.
 
@@ -124,7 +130,8 @@ def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
         [a, e, i, raan, arg, nu]
     epoch : float
         Epoch at the imaging time TDB seconds past J2000
-
+    epoch_delta : float
+        Time since the base epoch in seconds
     Returns
     -------
     NStateVector
@@ -142,10 +149,10 @@ def kepler_to_state(kep_elements: list[float], epoch: float) -> NStateVector:
     conic_elements = np.array(
         [perifocal_distance, *kep_elements[1:5], mean_anomaly, epoch, mu_earth()]
     )
-    return spice.conics(conic_elements, epoch) * 1000.0
+    return spice.conics(conic_elements, epoch + epoch_delta) * 1000.0
 
 
-def parse_tle(tle_data: list[str]) -> np.ndarray[tuple[Literal[10]], np.float64]:
+def parse_tle(tle_data: list[str]) -> npt.NDArray[np.float64]:
     # Adds a null to first line of tle if there is not a null
     if tle_data[0][-1] != "\x00":
         tle_data[0] += "\x00"
@@ -153,7 +160,7 @@ def parse_tle(tle_data: list[str]) -> np.ndarray[tuple[Literal[10]], np.float64]
     return tle_elements
 
 
-def tle_to_state(tle_data: list[str], epoch: float) -> NStateVector:
+def tle_to_state(tle_data: list[str], epoch: float) -> StateVector:
     """Converts two line element set to state vectors in ECI
 
     Parameters
@@ -175,21 +182,22 @@ def tle_to_state(tle_data: list[str], epoch: float) -> NStateVector:
     return spice.evsgp4(epoch, geophysical_data(), tle_elements) * 1000.0
 
 
-def eci_to_lvlh_rotation_matrix(state: NStateVector) -> NRotationMatrix:
+def rotation_matrix(state: StateVector) -> RotationMatrix:
+    """Computes the rotation matrix for a state vector"""
     # Angular momentum of target
     pos = state[:3]
     vel = state[3:]
     angular_momentum = np.cross(pos, vel)
 
     # Unit vectors of the co-moving frame
-    k = pos / np.linalg.norm(pos)
-    j = -angular_momentum / np.linalg.norm(-angular_momentum)
+    k = normalise(pos)
+    j = normalise(-angular_momentum)
     i = np.cross(j, k)
 
     return np.array([i, j, k])
 
 
-def clohessy_wiltshire(state: NStateVector, omega: float, t: float) -> NStateVector:
+def clohessy_wiltshire(state: StateVector, omega: float, t: float) -> StateVector:
     tau = omega * t
     s = np.sin(tau)
     c = np.cos(tau)
@@ -206,215 +214,173 @@ def clohessy_wiltshire(state: NStateVector, omega: float, t: float) -> NStateVec
     return stm @ state
 
 
-class Epoch(NamedTuple):
-    """Epoch class to handle epoch time in seconds past J2000
+def sun_state_vector(epoch: float) -> StateVector:
+    """Get location of sun with respect to Earth at epoch
+
+    Returns
+    -------
+    list
+        Sun state vector
+    """
+    # Earth ID = 399
+    # Sun ID = 10
+
+    [sun_location, _] = spice.spkez(10, epoch, "J2000", "NONE", 399)
+    return sun_location * 1000.0
+
+
+def eci_to_frame(frame: RotationMatrix, frame_origin: NVector, state: StateVector) -> NVector:
+    """Converts ECI state vector to LVLH position vector in the target centered
+    reference frame"""
+
+    displacement = frame_origin - state[:3]
+    return frame @ displacement.T
+
+
+def position_to_transform(position: NVector, attitude: list[float]) -> MTransform:
+    return (
+        MTransform()
+        .translate(position)
+        .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
+        .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
+        .rotate(axis=[0, 0, 1], angle=np.rad2deg(attitude[2]))
+    )
+
+
+_T = TypeVar("_T", npt.NDArray[np.float64], MTransform)
+
+
+@dataclass(frozen=True)
+class Positions(Generic[_T]):
+    earth: _T
+    sun: _T
+    target: _T
+    chaser: _T
+
+
+class Epoch(float):
+    """
+    Epoch class to handle epoch time in seconds past J2000
     Attributes
     ----------
     base : float
         Time in seconds past J2000 of the initial frame
-    offset : float
-        Offset time in seconds
+    delta : float
+        Time since the base epoch in seconds
     """
 
-    base: float
-    offset: float
+    def __new__(cls, value: float, delta: float = 0.0):
+        return super().__new__(cls, value + delta)
 
-    @property
-    def value(self) -> float:
-        return self.base + self.offset
+    def __init__(self, value: float, delta: float = 0.0):
+        self.base: Final = value
+        self.delta: Final = delta
 
 
 class PositionData:
-    class StateVectors:
-        """Calculates the state vectors of the Earth, Sun, Target and Chaser.
-        All state vectors are in ECI frame. Unless the attribute
-        ChaserSpacecraft.position_frame == PositionFormat.LVLH, in which case the
-        chaser is in LVLH relative to the target.
-
-        Attributes
-        ----------
-        epoch : Epoch
-            The epoch of the simulation in seconds past J2000
-        earth : NStateVector
-            Earth state vector [0, 0, 0, 0, 0, 0] [m/s]
-        sun : NStateVector
-            Sun state vector [x, y, z, vx, vy, vz] [m/s]
-        target : NStateVector
-            Target state vector [x, y, z, vx, vy, vz] [m/s]
-        chaser : NStateVector
-            Chaser state vector [x, y, z, vx, vy, vz] [m/s]
-        """
-
-        def __init__(self, mission_config: mc.MissionConfig, epoch: Epoch):
-            self.epoch = epoch
-            self.earth: NStateVector = np.zeros(6, dtype=np.float64)
-            self.target: NStateVector = self._convert_input(mission_config.target)
-
-            if mission_config.chaser.position_frame == PositionFormat.STATE_LVLH:
-                self.chaser: NStateVector = self._chaser_lvlh(mission_config.target)
-            else:
-                self.chaser: NStateVector = self._convert_input(mission_config.chaser)
-
-            self.sun: NStateVector = self._get_sun_location()
-
-        def _convert_input(self, spacecraft: mc.Spacecraft) -> NStateVector:
-            """Converts orbit defined in mission configs file to
-            orbit state vectors
-
-            Parameters
-            ----------
-            spacecraft : Spacecraft
-                The Spacecraft object from mission config file
-
-            Returns
-            -------
-            NVector
-                Orbit state vectors
-            """
-            # TODO: validate spacecraft.position matches respective PositionFormat
-            if spacecraft.position_frame == PositionFormat.STATE_ECI:
-                return np.array(spacecraft.position)
-            elif spacecraft.position_frame == PositionFormat.KEPLERIAN:
-                return kepler_to_state(spacecraft.position, self.epoch.value)
-            elif spacecraft.position_frame == PositionFormat.TLE:
-                return tle_to_state(spacecraft.position, self.epoch.value)
-            else:
-                raise ValueError("Invalid position format")
-
-        def _chaser_lvlh(self, target: mc.TargetSpacecraft) -> NStateVector:
-            """Calculates the chaser position in LVLH frame relative to the target.
-            First the mean motion of the target is calculated depending of the type of
-            input. This is then used with the Clohessy-Wiltshire equation to "propagate"
-            the chaser satellite.
-            """
-            mean_motion: float # rad/s
-            if target.position_frame == PositionFormat.STATE_ECI:
-                orbital_elements = spice.oscltx(
-                    self.target / 1000.0, self.epoch.value, mu_earth()
-                )
-                orbital_period = orbital_elements[10]  # Orbital period in seconds
-                if orbital_period == 0:
-                    raise ValueError(
-                        "Orbital period is zero. May be due to an eccentricity being close to 1"
-                    )
-                mean_motion = 2 * np.pi / orbital_period
-            elif target.position_frame == PositionFormat.KEPLERIAN:
-                semi_major_axis = target.position[0]
-                mean_motion = np.sqrt(mu_earth() / (semi_major_axis**3))
-            elif target.position_frame == PositionFormat.TLE:
-                tle = parse_tle(target.position)
-                mean_motion = tle[8] / 60.0
-            else:
-                raise ValueError("Invalid position format")
-            # mu = mu_earth() * 1e9
-            # orbital_energy = magnitude(self.target[3:]) ** 2 / 2 - mu / magnitude(self.target[:3])
-            # semi_major_axis = -mu / (2 * orbital_energy)
-            # mean_motion = np.sqrt(mu / (semi_major_axis ** 3))
-            return clohessy_wiltshire(self.target, mean_motion, self.epoch.offset)
-
-        def _get_sun_location(self) -> NStateVector:
-            """Get location of sun with respect to Earth at epoch
-
-            Returns
-            -------
-            list
-                Sun state vector
-            """
-            # Earth ID = 399
-            # Sun ID = 10
-
-            [sun_location, _] = spice.spkez(10, self.epoch.value, "J2000", "NONE", 399)
-            return sun_location * 1000.0
-
     def __init__(self, mission_config: mc.MissionConfig, epoch: Epoch):
         self._mission_config = mission_config
-        self._state_vectors = PositionData.StateVectors(mission_config, epoch)
+        self.epoch = epoch
 
-        self._local_frame_transform = eci_to_lvlh_rotation_matrix(
-            self._state_vectors.target
+        # noinspection PyArgumentList
+        self.eci: Final = Positions[StateVector](  # ECI state vectors
+            earth=np.zeros(6, dtype=np.float64),
+            sun=sun_state_vector(epoch),
+            target=self.to_state(mission_config.target),
+            chaser=self.to_state(mission_config.chaser),
         )
 
-        self._target_position = self._eci_to_lvlh(self._state_vectors.target)
+        self._frame_transform = rotation_matrix(self.eci.target)
 
-        chaser = mission_config.chaser
-        if chaser.position_frame == PositionFormat.STATE_LVLH:
-            self._chaser_position = self._state_vectors.chaser[:3]
+        if mission_config.chaser.position_frame == PositionFormat.STATE_LVLH:
+            chaser_pos = self.eci.chaser[:3]
         else:
-            self._chaser_position = self._eci_to_lvlh(self._state_vectors.chaser)
+            chaser_pos = self._eci_to_target(self.eci.chaser)
 
-        self._earth_position = self._eci_to_lvlh(self._state_vectors.earth)
-
-        sun_position = self._eci_to_lvlh(self._state_vectors.sun)
-        self._sun_direction_vector = -sun_position / np.linalg.norm(sun_position)
-
-    def _eci_to_lvlh(self, state_vector: NStateVector) -> NVector:
-        """Converts ECI state vector to LVLH position vector in the target centered
-        reference frame"""
-        offset = self._state_vectors.target[:3] - state_vector[:3]
-        return self._local_frame_transform @ offset.T
-
-    @property
-    def chaser_position(self) -> NVector:
-        """Returns chaser position in target centered LVLH
-
-        Returns
-        -------
-        Vector
-            Chaser position [x, y, z] [m]
-
-        """
-        return self._chaser_position
-
-    @property
-    def sun_direction_vector(self) -> MVector:
-        """Returns Sun direction vector relative to target centered LVLH
-        Returns
-        -------
-        MVector
-            Sun direction vector
-        """
-        return MVector(self._sun_direction_vector)
-
-    @staticmethod
-    def _get_spacecraft_transform(
-        position: NVector, attitude: list[float]
-    ) -> MTransform:
-        return (
-            MTransform()
-            .translate(position)
-            .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
-            .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
-            .rotate(axis=[0, 0, 1], angle=np.rad2deg(attitude[2]))
+        # noinspection PyArgumentList
+        self.lvlh: Final = Positions[NVector](  # LVLH (target frame) position vectors
+            earth=self._eci_to_target(self.eci.earth),
+            sun=-normalise(self._eci_to_target(self.eci.sun)),
+            target=self._eci_to_target(self.eci.target),
+            chaser=chaser_pos,
         )
 
-    @property
-    def earth_transform(self) -> MTransform:
-        """Returns the mitsuba transformation matrix for the Earth"""
-        return MTransform().translate(self._earth_position)
-
-    @property
-    def target_transform(self) -> MTransform:
-        """Returns the mitsuba transformation matrix for the target"""
-        return self._get_spacecraft_transform(
-            self._target_position, self._mission_config.target.attitude
-        )
-
-    @property
-    def chaser_transform(self) -> MTransform:
-        """Returns the mitsuba transformation matrix for the chaser"""
-        if self._mission_config.chaser.is_lookat:
-            return MTransform().look_at(
-                origin=self._chaser_position,
-                target=self._target_position,
+        if mission_config.chaser.is_lookat:
+            chaser_transform = MTransform().look_at(
+                origin=self.lvlh.chaser,
+                target=self.lvlh.target,
                 up=[0, 0, -1],  # Assumed +z is nadir
             )
         else:
-            return self._get_spacecraft_transform(
-                self._chaser_position, self._mission_config.chaser.attitude
+            chaser_transform = (
+                position_to_transform(self.lvlh.chaser, mission_config.chaser.attitude),
             )
 
+        # noinspection PyArgumentList
+        self.transforms: Final = Positions[MTransform](
+            earth=MTransform().translate(self.lvlh.earth),
+            sun=None,
+            target=position_to_transform(
+                self.lvlh.target, mission_config.target.attitude
+            ),
+            chaser=chaser_transform,
+        )
+
+    def to_state(self, satellite: mc.Spacecraft) -> StateVector:
+        if satellite.position_frame == PositionFormat.STATE_ECI:
+            return spice.prop2b(mu_earth(), np.asarray(satellite.position), self.epoch.delta)
+        elif satellite.position_frame == PositionFormat.KEPLERIAN:
+            return kepler_to_state(satellite.position, self.epoch.base, self.epoch.delta)
+        elif satellite.position_frame == PositionFormat.TLE:
+            return tle_to_state(satellite.position, self.epoch)
+        elif satellite.position_frame == PositionFormat.STATE_LVLH and isinstance(satellite, mc.ChaserSpacecraft):
+            return self.to_lvlh(np.asarray(satellite.position),self._mission_config.target,self.epoch.delta,)
+        else:
+            raise ValueError("Invalid position format")
+
+    @staticmethod
+    def to_lvlh(chaser_state: StateVector, target: mc.TargetSpacecraft, t: float) -> StateVector:
+        """Calculates the chaser position in LVLH frame relative to the target.
+        First the mean motion of the target is calculated depending on the type of
+        input. This is then used with the Clohessy-Wiltshire equation to "propagate"
+        the chaser satellite.
+        """
+        mean_motion: float  # rad/s
+        if target.position_frame == PositionFormat.STATE_ECI:
+            mu = mu_earth() * 1e9
+            orbital_energy = magnitude(target[3:]) ** 2 / 2 - mu / magnitude(target[:3])
+            semi_major_axis = -mu / (2 * orbital_energy)
+            mean_motion = np.sqrt(mu / (semi_major_axis**3))
+        elif target.position_frame == PositionFormat.KEPLERIAN:
+            semi_major_axis = target.position[0]
+            mean_motion = np.sqrt(mu_earth() / (semi_major_axis**3))
+        elif target.position_frame == PositionFormat.TLE:
+            tle = parse_tle(target.position)
+            mean_motion = tle[8] / 60.0
+        else:
+            raise ValueError("Invalid position format")
+        return clohessy_wiltshire(chaser_state, mean_motion, t)
+
+    def _eci_to_target(self, state_vector: StateVector) -> NVector:
+        return eci_to_frame(self._frame_transform, self.eci.target[:3], state_vector)
+
     @property
-    def relative_distance(self) -> float:
-        """Calculates relative distance between the target and chaser in a 3d
-        cartesian coordinate system."""
-        return magnitude(self._target_position - self._chaser_position)
+    def sun_direction_vector(self) -> MVector:
+        return MVector(self.lvlh.sun)
+
+    @property
+    def earth_transform(self) -> MTransform:
+        return self.transforms.earth
+
+    @property
+    def target_transform(self) -> MTransform:
+        return self.transforms.target
+
+    @property
+    def chaser_transform(self) -> MTransform:
+        return self.transforms.chaser
+
+    # def get_position(self, key: Literal["earth", "sun", "target", "chaser"]) -> Union[MTransform, MVector]:
+    #     if key == "sun":
+    #         return MVector(self._lvlh.sun)
+    #     return self._transforms.__dict__[key]
