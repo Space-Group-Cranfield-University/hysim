@@ -7,7 +7,7 @@ from hysim.util.mitsuba_types import Transform, Vector
 from hysim.configs.config import Config
 from hysim.util.constants import SceneEntity
 
-from hysim import frame_transforms as ft
+from hysim.simulator import frame_transforms as ft
 from hysim.data import data_handling as dh
 
 from hysim.mitsuba import (

@@ -15,7 +15,7 @@ import numpy as np
 from hysim.configs.case_config import OutputItem
 from hysim.configs.config import Config
 from hysim.util.constants import ImagingMode, OutputFormat
-from hysim.scene_builder import SceneBuilder
+from hysim.simulator.scene_builder import SceneBuilder
 
 
 class OutputHandler:

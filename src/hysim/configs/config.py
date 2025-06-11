@@ -59,6 +59,7 @@ class Config:
     }
 
     def __init__(self, case_directory: Path) -> None:
+        logging.info("Getting user inputs from configuration files")
         # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
         self._case_directory = str(case_directory)
@@ -109,7 +110,7 @@ class Config:
                 _log_config_error(file_type, location, message, path, value)
             _exit_on_error()
         except KeyError:
-            logging.error(f'"{file_type}" is an invalid config type at "{path}"')
+            logging.error(f'"%s" is an invalid config type at "%s"', file_type, path)
             _exit_on_error()
 
     @property
