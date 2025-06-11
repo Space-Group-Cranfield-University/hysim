@@ -87,7 +87,7 @@ def earth_radius() -> float:
     return geophysical_data()[6] * 1000.0
 
 
-def magnitude(vector: npt.NDArray) -> float:
+def magnitude(vector: npt.ArrayLike) -> float:
     return np.linalg.norm(vector).item()
 
 
@@ -326,20 +326,20 @@ class PositionData:
             chaser=chaser_transform,
         )
 
-    def to_state(self, satellite: mc.Spacecraft) -> StateVector:
+    def to_state(self, satellite: mc.Satellite) -> StateVector:
         if satellite.position_frame == PositionFormat.STATE_ECI:
             return spice.prop2b(mu_earth(), np.asarray(satellite.position), self.epoch.delta)
         elif satellite.position_frame == PositionFormat.KEPLERIAN:
             return kepler_to_state(satellite.position, self.epoch.base, self.epoch.delta)
         elif satellite.position_frame == PositionFormat.TLE:
             return tle_to_state(satellite.position, self.epoch)
-        elif satellite.position_frame == PositionFormat.STATE_LVLH and isinstance(satellite, mc.ChaserSpacecraft):
-            return self.to_lvlh(np.asarray(satellite.position),self._mission_config.target,self.epoch.delta,)
+        elif satellite.position_frame == PositionFormat.STATE_LVLH and isinstance(satellite, mc.Chaser):
+            return self.to_lvlh(np.asarray(satellite.position),self._mission_config.target,self.epoch.delta)
         else:
             raise ValueError("Invalid position format")
 
     @staticmethod
-    def to_lvlh(chaser_state: StateVector, target: mc.TargetSpacecraft, t: float) -> StateVector:
+    def to_lvlh(chaser_state: StateVector, target: mc.Target, t: float) -> StateVector:
         """Calculates the chaser position in LVLH frame relative to the target.
         First the mean motion of the target is calculated depending on the type of
         input. This is then used with the Clohessy-Wiltshire equation to "propagate"
@@ -348,7 +348,7 @@ class PositionData:
         mean_motion: float  # rad/s
         if target.position_frame == PositionFormat.STATE_ECI:
             mu = mu_earth() * 1e9
-            orbital_energy = magnitude(target[3:]) ** 2 / 2 - mu / magnitude(target[:3])
+            orbital_energy = magnitude(target.position[3:]) ** 2 / 2 - mu / magnitude(target.position[:3])
             semi_major_axis = -mu / (2 * orbital_energy)
             mean_motion = np.sqrt(mu / (semi_major_axis**3))
         elif target.position_frame == PositionFormat.KEPLERIAN:

@@ -1,7 +1,7 @@
-from typing import Union, Literal, Generic, TypeVar
+from typing import Union, Literal, TypeVar
 from typing_extensions import Self
 
-from pydantic import field_validator, model_validator
+from pydantic import field_validator, model_validator, ValidationInfo
 from pydantic.dataclasses import dataclass
 from hysim.util.constants import ConfigType, PositionFormat
 
@@ -9,26 +9,37 @@ _T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
-class Spacecraft(Generic[_T]):
+class Satellite:
     position_frame: PositionFormat  # TODO: rename position_frame to position_format
     position: list[Union[float, str]]
-    attitude: _T
+    attitude: list[float]
 
-
-@dataclass(frozen=True)
-class TargetSpacecraft(Spacecraft[list[float]]):
-
-    @field_validator("position_frame", mode="after")
+    @field_validator("position", mode="after")
     @classmethod
-    def _validate_position_frame(cls, value: PositionFormat) -> PositionFormat:
-        if value == PositionFormat.STATE_LVLH:
-            raise ValueError("The target spacecraft cannot be in the LVLH frame.")
+    def _validate_position(cls, value: list[Union[float, str]], info: ValidationInfo) -> list[Union[float, str]]:
+        if info.data["position_frame"] == PositionFormat.TLE:
+            if len(value) != 2 or not all(isinstance(v, str) for v in value):
+                raise ValueError("The TLE position must be a list of two strings.")
+            return value
+
+        if len(value) != 6 or not all(isinstance(v, float) for v in value):
+            raise ValueError("The list length must be 6")
         return value
 
 
 @dataclass(frozen=True)
-class ChaserSpacecraft(Spacecraft[Union[list[float], Literal["lookat"]]]):
+class Target(Satellite):
+    @field_validator("position_frame", mode="after")
+    @classmethod
+    def _validate_position_frame(cls, value: PositionFormat) -> PositionFormat:
+        if value == PositionFormat.STATE_LVLH:
+            raise ValueError("The target satellite cannot be in the LVLH frame.")
+        return value
 
+
+@dataclass(frozen=True)
+class Chaser(Satellite):
+    attitude: Union[list[float], Literal["lookat"]]
     @property
     def is_lookat(self) -> bool:
         return self.attitude == "lookat"
@@ -38,8 +49,8 @@ class ChaserSpacecraft(Spacecraft[Union[list[float], Literal["lookat"]]]):
 class MissionConfig:
     file_type: ConfigType
     datetime: str
-    target: TargetSpacecraft
-    chaser: ChaserSpacecraft
+    target: Target
+    chaser: Chaser
 
     @model_validator(mode="after")
     def _validate_frames(self) -> Self:
