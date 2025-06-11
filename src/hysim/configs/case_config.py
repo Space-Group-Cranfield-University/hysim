@@ -10,6 +10,7 @@ from hysim.mitsuba.samplers import Sampler
 @dataclass(frozen=True)
 class OutputItem:
     format: OutputFormat
+    # TODO: validate its a directory for png and csv or split export types (OutputItem) into separate classes
     file_name: str
     reference_wavelengths: Optional[list[int]] = None
 

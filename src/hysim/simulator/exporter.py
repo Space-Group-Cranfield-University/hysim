@@ -6,147 +6,123 @@ the simulator.
 
 import logging
 from pathlib import Path
-from typing import Final, Callable
 
 import mitsuba as mi
 import hysim.util.mitsuba_types as mit
 import numpy as np
 
-from hysim.configs.case_config import OutputItem
 from hysim.configs.config import Config
+from hysim.simulator import RenderController
 from hysim.util.constants import ImagingMode, OutputFormat
-from hysim.simulator.scene_builder import SceneBuilder
 
 
-class OutputHandler:
-    """Formats data from the rendered scene and outputs it to a user specified location.
+def _log_exporting(output_format: OutputFormat):
+    logging.info("Exporting results as a %s file", output_format.as_suffix)
 
-    Output data is converted to user defined format. Currently
-    supported formats:
-    - EXR
-    - PNG
-    - CSV
+
+def create_channel_names(wavelengths: list[float]) -> list[str]:
+    """Generates list of channel names for the following
+    exr header format: S0.xxx,xxnm where x is wavelength.
     """
+    return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
 
-    def __init__(self, render_data: mit.Tensor, scene_builder: SceneBuilder, config: Config):
-        """Initializer
 
-        Parameters
-        ----------
-        render_data : mit.Tensor
-            Tensor array output from mitsuba
-        scene_builder : SceneBuilder
-            The scene builder. Only used for getting spectra data with a hyperspectral
-            imaging mode set.
-        config : Config
-            The user configuration object
-        """
-        self._render_data = render_data
-        self._config = config
-        self._scene_builder = scene_builder
-        self._case_directory = Path(config.case_directory)
-        self._log_prefix: Final[str] = "Exporting results as"
-        self._format_map: dict[OutputFormat, Callable[[OutputItem], None]] = {
-            OutputFormat.EXR: self._export_as_exr,
-            OutputFormat.PNG: self._export_as_png,
-            OutputFormat.CSV: self._export_as_csv,
-        }
+def export_exr(
+    file_name: Path,
+    case_directory: Path,
+    render_data: mit.Tensor,
+    wavelengths: list[float]
+):
+    _log_exporting(OutputFormat.EXR)
 
-    def _create_output_directory(self, output_item: OutputItem) -> Path:
-        result_dir = self._case_directory / output_item.file_name
-        if result_dir.is_dir():
-            logging.debug(
-                f'The directory "{result_dir}" already exists. The .{output_item.format} files inside may be overwritten.'
-            )
-        else:
-            result_dir.mkdir(parents=True, exist_ok=True)
-        return result_dir
+    channel_names = create_channel_names(wavelengths)
+    if len(channel_names) != len(render_data[0, 0, :]):
+        raise ValueError("Total reference wavelengths and channels should be the same")
 
-    @staticmethod
-    def _create_channel_names(wavelengths: list[float]) -> list[str]:
-        """Generates list of channel names for the following
-        exr header format: S0.xxx,xxnm where x is wavelength.
-        """
-        return [
-            f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths
-        ]
+    if len(render_data[0, 0, :]) == 1:
+        pixel_format = mi.Bitmap.PixelFormat.Y
+    else:
+        pixel_format = mi.Bitmap.PixelFormat.MultiChannel
 
-    def _export_as_exr(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix} a .{output_item.format} file")
+    result_bmp = mi.Bitmap(
+        render_data,
+        pixel_format=pixel_format,
+        channel_names=channel_names,
+    )
 
-        channel_names: list[str]
-        if self._config.sensor.imaging_mode == ImagingMode.MULTISPECTRAL:
-            # Find user input for band reference values
-            try:
-                channel_names = self._create_channel_names(
-                    output_item.reference_wavelengths
-                )
-            except (KeyError, TypeError):
-                logging.error("reference_wavelengths required for multispectral .exr")
-        elif self._config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
-            # User rolling average of narrow band values
-            wavelengths = [
-                (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
-                for _, spectrum in self._scene_builder.spectra
-            ]
-            channel_names = self._create_channel_names(wavelengths)
+    result_bmp.metadata()["pixelAspectRatio"] = 1
+    result_bmp.metadata()["screenWindowWidth"] = 1
 
-        if len(channel_names) != len(self._render_data[0, 0, :]):
-            raise ValueError(
-                "Total reference wavelengths and channels should be the same"
-            )
+    if file_name.suffix != OutputFormat.EXR.as_suffix:
+        file_name += OutputFormat.EXR.as_suffix
 
-        if len(self._render_data[0, 0, :]) == 1:
-            pixel_format = mi.Bitmap.PixelFormat.Y
-        else:
-            pixel_format = mi.Bitmap.PixelFormat.MultiChannel
+    file_path = case_directory / file_name
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        result_bmp = mi.Bitmap(
-            self._render_data,
-            pixel_format=pixel_format,
-            channel_names=channel_names,
+    if file_path.is_file():
+        logging.info('The file "%s" already exists. Overwriting...', file_path)
+
+    mi.util.write_bitmap(str(file_path), result_bmp)
+
+
+def export_bands(
+    output_directory: Path,
+    case_directory: Path,
+    render_data: mit.Tensor,
+    output_format: OutputFormat,
+):
+    """
+    Export render data as bands in the specified format.
+
+    Parameters
+    ----------
+    output_directory : Path
+        Relative directory where the output files will be saved.
+    case_directory : Path
+        The directory where the case files are located.
+    render_data : mit.Tensor
+        The render data from Mitsuba.
+    output_format : OutputFormat
+        The format in which the data should be exported (PNG or CSV).
+    """
+    if output_format == OutputFormat.EXR:
+        raise ValueError(
+            "Exporting bands to EXR format is not supported. Use export_exr instead."
         )
 
-        if "scalar" in mi.variant():
-            # These assignments cause errors on cuda variants.
-            result_bmp.metadata()["pixelAspectRatio"] = 1
-            result_bmp.metadata()["screenWindowWidth"] = 1
+    _log_exporting(output_format)
 
-        file_name = output_item.file_name
-        exr = "." + OutputFormat.EXR
-        if not file_name.endswith(exr):
-            file_name += exr
+    path = case_directory / output_directory
+    if path.is_dir():
+        logging.debug(
+            'The directory "%s" already exists. The %s files inside may be overwritten.',
+            path,
+            output_format.as_suffix,
+        )
+    else:
+        path.mkdir(parents=True, exist_ok=True)
 
-        file_path = self._case_directory / file_name
-        file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_writer = None
+    if output_format == OutputFormat.PNG:
+        file_writer = lambda file_name, data: mi.util.write_bitmap(str(file_name), data)
+    elif output_format == OutputFormat.CSV:
+        file_writer = lambda file_name, data: np.savetxt(file_name, np.array(data), delimiter=",")
+    for i in range(len(render_data[0, 0, :])):
+        file_writer(path / f"band_{i}{output_format.as_suffix}", render_data[:, :, i])
 
-        if file_path.is_file():
-            logging.info(f'The file "{file_path}" already exists. Overwriting...')
 
-        mi.util.write_bitmap(str(file_path), result_bmp)
-
-    def _export_as_png(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix} .{output_item.format} files")
-
-        # output_item.file_name is actually a directory here
-        results_dir = self._create_output_directory(output_item)
-
-        for i in range(len(self._render_data[0, 0, :])):
-            mi.util.write_bitmap(
-                str(results_dir / f"Band_{i}.png"), self._render_data[:, :, i]
-            )
-
-    def _export_as_csv(self, output_item: OutputItem):
-        logging.info(f"{self._log_prefix} .{output_item.format} files")
-
-        # output_item.file_name is actually a directory here
-        results_dir = self._create_output_directory(output_item)
-
-        for i in range(len(self._render_data[0, 0, :])):
-            results_array = np.array(self._render_data[:, :, i])
-            np.savetxt(results_dir / f"Band_{i}.csv", results_array, delimiter=",")
-
-    def export_data(self):
-        """For each format defined by user, export output data"""
-        for output in self._config.case.output:
-            self._format_map[output.format](output)
+def export(config: Config, data: RenderController):
+    for info in config.case.output:
+        output_path = Path(info.file_name)
+        case_directory = Path(config.case_directory)
+        if info.format == OutputFormat.EXR:
+            if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
+                wavelengths = [  # User rolling average of narrow band values
+                    (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
+                    for _, spectrum in data.scene_builder.spectra
+                ]
+            else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
+                wavelengths = info.reference_wavelengths # Find user input for band reference values
+            export_exr(output_path, case_directory, data.output, wavelengths)
+        else:
+            export_bands(output_path, case_directory, data.output, info.format)

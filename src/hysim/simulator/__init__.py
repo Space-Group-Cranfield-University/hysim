@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 
 from hysim.configs.config import Config
-from hysim.simulator.exporter import OutputHandler
 from hysim.simulator.renderer import RenderController
+from hysim.simulator.exporter import export
 
 
 def run(directory: str):
@@ -40,23 +40,16 @@ def run(directory: str):
     # ------------------------------- #
     # Get user Inputs
     # ------------------------------- #
-
-    logging.info('Running Simulation Case @ "%s"', case_directory)
+    logging.info('Running Simulation Case "%s"', case_directory)
     config = Config(case_directory)
-
     # ------------------------------- #
     # Rendering
     # ------------------------------- #
     render_control = RenderController(config)
     render_control.render()
-
-
     # ------------------------------- #
     # Export Outputs
     # ------------------------------- #
-    output = OutputHandler(
-        render_control.output, render_control.scene_builder, config
-    )
-    output.export_data()
+    export(config, render_control)
 
     logging.info("Done")
