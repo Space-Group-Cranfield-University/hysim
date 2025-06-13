@@ -26,3 +26,4 @@ class SensorConfig:
     film: Film
     imaging_mode: ImagingMode
     spectrum_file: str
+    reference_wavelengths: Optional[list[int]] = None

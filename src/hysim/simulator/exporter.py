@@ -119,10 +119,10 @@ def export(config: Config, data: RenderController):
             if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
                 wavelengths = [  # User rolling average of narrow band values
                     (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
-                    for _, spectrum in data.scene_builder.spectra
+                    for _, spectrum in config.sensor_bands
                 ]
             else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
-                wavelengths = info.reference_wavelengths # Find user input for band reference values
+                wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
             export_exr(output_path, case_directory, data.output, wavelengths)
         else:
             export_bands(output_path, case_directory, data.output, info.format)

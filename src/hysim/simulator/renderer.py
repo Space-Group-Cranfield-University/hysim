@@ -44,11 +44,11 @@ class RenderController:
         spice.furnsh(dh.kernel_paths())
 
         mi.set_variant(config.case.mitsuba_variant)
-        self.scene_builder = sb.SceneBuilder(config)
+        self._scene_builder = sb.SceneBuilder(config)
         self.output = mit.Tensor(np.zeros((
             config.sensor.film.height,
             config.sensor.film.width,
-            len(self.scene_builder.spectra)
+            len(config.sensor_bands)
         )))
         self._config = config
 
@@ -59,14 +59,14 @@ class RenderController:
 
     def render(self) -> mit.Tensor:
         logging.info("Building scene geometry")
-        self.scene_builder.build()
+        self._scene_builder.build()
 
         logging.info("Calculating scene positional data")
         self.frames = [
             Frame(
                 ft.Epoch(self.base_epoch, self.dt * index),
                 self._config.mission,
-                self.scene_builder
+                self._scene_builder
             )
             for index in range(self.frame_count)
         ]

@@ -37,9 +37,6 @@ class SceneBuilder:
         """
         self._config = config
         self._scene = scene.Scene(integrator=config.case.integrator)
-        self._spectra = dh.read_spd(
-            self._config.sensor_spectrum_path, self._config.sensor.imaging_mode
-        )
 
     def build(self):
         logging.debug("Building the Earth")
@@ -74,7 +71,7 @@ class SceneBuilder:
             #         )
             #     ),
             # ),
-        , type="sphere")
+        )
         self._scene.add_shape(SceneEntity.EARTH.value, earth)
 
     def _build_sun(self):
@@ -92,7 +89,7 @@ class SceneBuilder:
             width=self._config.sensor.film.width,
             height=self._config.sensor.film.height,
         )
-        film.set_spectrum(self._spectra)
+        film.set_spectrum(self._config.sensor_bands)
 
         chaser = sensors.PerspectiveCamera(
             sampler=self._config.case.sampler,
@@ -139,14 +136,3 @@ class SceneBuilder:
             passed to Mitsuba for rendering.
         """
         return self._scene
-
-    @property
-    def spectra(self) -> list[tuple[str, spectra.IrregularSpectrum]]:
-        """
-        Returns
-        -------
-        spectra : list[tuple[str, spectra.IrregularSpectrum]]
-            Spectra data from the film in the scene. Used for outputting hyperspectral
-            data to an .exr file in the OutputHandler class.
-        """
-        return self._spectra
