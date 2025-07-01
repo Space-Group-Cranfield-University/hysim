@@ -27,6 +27,10 @@ def create_channel_names(wavelengths: list[float]) -> list[str]:
     return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
 
 
+# def export_gif(file_name: Path, case_directory: Path, frame_data: list[mit.Tensor]):
+#     pass
+
+
 def export_exr(
     file_name: Path,
     case_directory: Path,
@@ -44,17 +48,18 @@ def export_exr(
     else:
         pixel_format = mi.Bitmap.PixelFormat.MultiChannel
 
-    result_bmp = mi.Bitmap(
+    bitmap = mi.Bitmap(
         render_data,
         pixel_format=pixel_format,
         channel_names=channel_names,
     )
 
-    result_bmp.metadata()["pixelAspectRatio"] = 1
-    result_bmp.metadata()["screenWindowWidth"] = 1
+    # TODO: add more metadata relevant to HySim. E.g. HySim version, frame count etc
+    bitmap.metadata()["pixelAspectRatio"] = 1
+    bitmap.metadata()["screenWindowWidth"] = 1
 
     if file_name.suffix != OutputFormat.EXR.as_suffix:
-        file_name += OutputFormat.EXR.as_suffix
+        file_name = file_name.with_suffix(OutputFormat.EXR.as_suffix)
 
     file_path = case_directory / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +67,7 @@ def export_exr(
     if file_path.is_file():
         logging.info('The file "%s" already exists. Overwriting...', file_path)
 
-    mi.util.write_bitmap(str(file_path), result_bmp)
+    bitmap.write_async(str(file_path))
 
 
 def export_bands(
@@ -114,7 +119,6 @@ def export_bands(
 def export(config: Config, data: RenderController):
     for info in config.case.output:
         output_path = Path(info.file_name)
-        case_directory = Path(config.case_directory)
         if info.format == OutputFormat.EXR:
             if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
                 wavelengths = [  # User rolling average of narrow band values
@@ -123,6 +127,6 @@ def export(config: Config, data: RenderController):
                 ]
             else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
                 wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
-            export_exr(output_path, case_directory, data.output, wavelengths)
+            export_exr(output_path, config.case_directory, data.output, wavelengths)
         else:
-            export_bands(output_path, case_directory, data.output, info.format)
+            export_bands(output_path, config.case_directory, data.output, info.format)

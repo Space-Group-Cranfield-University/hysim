@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal, Set, Iterable, Type, Any, Union
+from typing import Literal, Set, Iterable, Type, Union
 
 from pydantic import ValidationError
 from rickle import BaseRickle
@@ -12,7 +12,7 @@ from hysim.configs.mission_config import MissionConfig
 from hysim.configs.parts_config import PartsConfig, Part
 from hysim.configs.sensor_config import SensorConfig
 from hysim.mitsuba.bsdfs import BSDF
-from hysim.mitsuba.spectra import IrregularSpectrum
+from hysim.mitsuba.spectra import Spectrum
 from hysim.util.constants import ConfigType, ImagingMode, OutputFormat
 
 
@@ -53,7 +53,7 @@ class Config:
     """
 
     # The values in this dict start as the config class type, but are replaced with the class instance during _init_configs
-    _configs: dict[ConfigType, Union[Type, Any]] = {
+    _configs: dict[ConfigType, Union[Type, Union[CaseConfig, MissionConfig, SensorConfig, PartsConfig, MaterialsConfig]]] = {
         ConfigType.CASE: CaseConfig,
         ConfigType.MISSION: MissionConfig,
         ConfigType.SENSOR: SensorConfig,
@@ -63,22 +63,29 @@ class Config:
 
     def __init__(self, case_directory: Path):
         logging.info("Getting user inputs from configuration files")
-        # Walk through the case directory and load the configuration files
         self._file_type_ltr: Literal["file_type"] = "file_type"
-        self._case_directory = str(case_directory)
-        _case_files: dict[str, str] = {}
+        self._case_directory = case_directory
         self._directories: Set[str] = set()
+        case_files: dict[str, str] = {}
 
         yaml_ext = {".yml", ".yaml" ".json", ".toml"}
         content_ext = {".spd", ".ply"}
+        # Walk through the case directory and load the configuration files
         for path in case_directory.rglob("*"):
             if path.suffix in yaml_ext:
                 self._init_configs(str(path))
             elif path.suffix in content_ext:
-                _case_files[path.name] = str(path)
+                case_files[path.name] = str(path)
                 self._directories.add(str(path.parent))
 
-        self._sensor_bands = dh.read_spd(_case_files[self.sensor.spectrum_file], self.sensor.imaging_mode)
+        # TODO: Things to fail fast:
+        #   - User specified spectrum file.
+        #   - User materials names are consistent through all config files.
+        #   - User part names match files
+
+        # Load spectrum file
+        self._sensor_bands = dh.read_spd(case_files[self.sensor.spectrum_file], self.sensor.imaging_mode)
+
         if (self.sensor.imaging_mode == ImagingMode.MULTISPECTRAL
                 and any(x.format == OutputFormat.EXR for x in self.case.output)):
             error_message = None
@@ -93,7 +100,7 @@ class Config:
                     ConfigType.SENSOR,
                     "reference_wavelengths",
                     error_message,
-                    _case_files[self.sensor.spectrum_file],
+                    case_files[self.sensor.spectrum_file],
                     input_value
                 )
                 _exit_on_error()
@@ -118,11 +125,11 @@ class Config:
             _exit_on_error()
 
     @property
-    def case_directory(self) -> str:
+    def case_directory(self) -> Path:
         return self._case_directory
 
     @property
-    def sensor_bands(self) -> list[tuple[str, IrregularSpectrum]]:
+    def sensor_bands(self) -> list[tuple[str, Spectrum]]:
         """Returns the sensor band sensitivity"""
         return self._sensor_bands
 

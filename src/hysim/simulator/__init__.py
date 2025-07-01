@@ -10,9 +10,9 @@ def run(directory: str):
     """Runs a simulator case.
 
     The function is called by the entry script to run a
-    case. For a case the user input filed are parsed,
+    case. For a case the user input files are parsed,
     the orbit data is converted to LVLH, and the scene is
-    assembled. The scene is then rendered and the output
+    assembled. The scene is rendered, and the output
     is converted to the format specified in the configs.
 
     The run directory must be the root of the folders
@@ -36,7 +36,6 @@ def run(directory: str):
         import sys
         sys.exit()
 
-
     # ------------------------------- #
     # Get user Inputs
     # ------------------------------- #
@@ -51,5 +50,4 @@ def run(directory: str):
     # Export Outputs
     # ------------------------------- #
     export(config, render_control)
-
     logging.info("Done")

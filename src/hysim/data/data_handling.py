@@ -148,7 +148,7 @@ def load_material_database() -> dict[str, TwoSidedBRDF]:
     return materials
 
 
-def get_database_material(material_name: str) -> TwoSidedBRDF:
+def database_material(material_name: str) -> TwoSidedBRDF:
     """Retrieves material dictionary from database"""
     material = load_material_database().get(material_name)
     if material is None:

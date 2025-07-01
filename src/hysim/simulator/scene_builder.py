@@ -104,9 +104,7 @@ class SceneBuilder:
             if part_description.user_material:
                 mesh_material = self._config.user_materials[part_description.user_material]
             elif part_description.database_material:
-                mesh_material = dh.get_database_material(
-                    part_description.database_material
-                )
+                mesh_material = dh.database_material(part_description.database_material)
             else:
                 raise ValueError("No material defined for part")
             mesh = shapes.PlyMesh(

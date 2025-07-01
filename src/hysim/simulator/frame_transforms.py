@@ -18,54 +18,11 @@ from hysim.util.constants import PositionFormat, SceneEntity
 
 # Types
 MVector = mit.Vector
-MTransform = mit.Transform
+Transform = mit.Transform
 
 NVector = npt.NDArray[np.float64]  #  np.ndarray[tuple[Literal[3]], np.ScalarType]
 StateVector = npt.NDArray[np.float64]  # np.ndarray[tuple[Literal[6]], np.ScalarType]
 RotationMatrix = npt.NDArray[np.float64]  # np.ndarray[tuple[Literal[3], Literal[3]], np.ScalarType]
-
-# def calculate_eccentric_anomaly(
-#     eccentricity: float, true_anomaly: float
-# ) -> float:
-#     """Calculates eccentric anomaly given eccentricity and true anomaly
-#
-#     Parameters
-#     ----------
-#     eccentricity : float
-#         Eccentricity of an orbit [no units].
-#     true_anomaly : float
-#         True anomaly [rad]
-#
-#     Returns
-#     -------
-#     float
-#         Eccentric anomaly of an orbit [rad]
-#     """
-#     return 2 * np.arctan(
-#         np.sqrt((1 - eccentricity) / (1 + eccentricity))
-#         * np.tan(true_anomaly / 2)
-#     )
-#
-#
-# def calculate_mean_anomaly(
-#     eccentric_anomaly: float, eccentricity: float
-# ) -> float:
-#     """Calculates mean anomaly of an orbit given eccentric anomaly
-#     and eccentricity.
-#
-#     Parameters
-#     ----------
-#     eccentric_anomaly : float
-#         Eccentric anomaly of the orbit [rad]
-#     eccentricity : float
-#         Eccentricity of the orbit [rad]
-#
-#     Returns
-#     -------
-#     float
-#         Mean anomaly of the orbit [rad]
-#     """
-#     return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
 
 @cache
@@ -95,6 +52,46 @@ def normalise(vector: npt.NDArray) -> npt.NDArray:
     mag = magnitude(vector)
     if mag == 0: return vector
     return vector / mag
+
+
+def calculate_eccentric_anomaly(eccentricity: float, true_anomaly: float) -> float:
+    """Calculates eccentric anomaly given eccentricity and true anomaly
+
+    Parameters
+    ----------
+    eccentricity : float
+        Eccentricity of an orbit [no units].
+    true_anomaly : float
+        True anomaly [rad]
+
+    Returns
+    -------
+    float
+        Eccentric anomaly of an orbit [rad]
+    """
+    return 2 * np.arctan(
+        np.sqrt((1 - eccentricity) / (1 + eccentricity))
+        * np.tan(true_anomaly / 2)
+    )
+
+
+def calculate_mean_anomaly(eccentric_anomaly: float, eccentricity: float) -> float:
+    """Calculates mean anomaly of an orbit given eccentric anomaly
+    and eccentricity.
+
+    Parameters
+    ----------
+    eccentric_anomaly : float
+        Eccentric anomaly of the orbit [rad]
+    eccentricity : float
+        Eccentricity of the orbit [rad]
+
+    Returns
+    -------
+    float
+        Mean anomaly of the orbit [rad]
+    """
+    return eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)
 
 
 def calculate_perifocal_distance(semi_major_axis: float, eccentricity: float) -> float:
@@ -146,6 +143,7 @@ def kepler_to_state(kep_elements: list[float], epoch: float, epoch_delta: float 
 
     # TODO: Confirm preferred input, comment this out to swap to true anomaly
     mean_anomaly = kep_elements[5]
+
     conic_elements = np.array(
         [perifocal_distance, *kep_elements[1:5], mean_anomaly, epoch, mu_earth()]
     )
@@ -237,9 +235,9 @@ def eci_to_frame(frame: RotationMatrix, frame_origin: NVector, state: StateVecto
     return frame @ displacement.T
 
 
-def position_to_transform(position: NVector, attitude: list[float]) -> MTransform:
+def position_to_transform(position: NVector, attitude: list[float]) -> Transform:
     return (
-        MTransform()
+        Transform()
         .translate(position)
         .rotate(axis=[1, 0, 0], angle=np.rad2deg(attitude[0]))
         .rotate(axis=[0, 1, 0], angle=np.rad2deg(attitude[1]))
@@ -247,7 +245,7 @@ def position_to_transform(position: NVector, attitude: list[float]) -> MTransfor
     )
 
 
-_T = TypeVar("_T", npt.NDArray[np.float64], MTransform)
+_T = TypeVar("_T", npt.NDArray[np.float64], Transform)
 
 
 @dataclass(frozen=True)
@@ -283,7 +281,7 @@ class PositionData:
         self.epoch = epoch
 
         # noinspection PyArgumentList
-        self.eci: Final = Positions[StateVector](  # ECI state vectors
+        self.eci: Final = Positions[StateVector](  # ECI/J2000 state vectors
             earth=np.zeros(6, dtype=np.float64),
             sun=sun_state_vector(epoch),
             target=self.to_state(mission_config.target),
@@ -306,7 +304,7 @@ class PositionData:
         )
 
         if mission_config.chaser.is_lookat:
-            chaser_transform = MTransform().look_at(
+            chaser_transform = Transform().look_at(
                 origin=self.lvlh.chaser,
                 target=self.lvlh.target,
                 up=[0, 0, -1],  # Assumed +z is nadir
@@ -317,8 +315,8 @@ class PositionData:
             )
 
         # noinspection PyArgumentList
-        self.transforms: Final = Positions[MTransform](
-            earth=MTransform().translate(self.lvlh.earth),
+        self.transforms: Final = Positions[Transform](
+            earth=Transform().translate(self.lvlh.earth),
             sun=None,
             target=position_to_transform(
                 self.lvlh.target, mission_config.target.attitude
@@ -364,7 +362,7 @@ class PositionData:
     def _eci_to_target(self, state_vector: StateVector) -> NVector:
         return eci_to_frame(self._frame_transform, self.eci.target[:3], state_vector)
 
-    def get(self, key: SceneEntity) -> Union[MTransform, MVector]:
+    def get(self, key: SceneEntity) -> Union[Transform, MVector]:
         if key == SceneEntity.SUN:
             return MVector(self.lvlh.sun)
         return self.transforms.__dict__[key]
