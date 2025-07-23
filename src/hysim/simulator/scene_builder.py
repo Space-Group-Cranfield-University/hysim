@@ -49,28 +49,18 @@ class SceneBuilder:
         self._build_target()
 
     def _build_earth(self):
-        earth = shapes.Sphere(
-            radius=ft.earth_radius(),
+        # TODO: Improve earth model and orientation. Currently a png of earth applied to
+        #  an oblate spheroid mesh, with conversion from rgb to spectral data is done by Mitsuba.
+        earth = shapes.PlyMesh(
             to_world=Transform(),
+            filename=dh.EarthData.MESH,
+            flip_tex_coords=True,
             material=bsdfs.DiffuseMaterial(
                 reflectance=textures.BitmapTexture(
-                    filename=dh.EarthData.MAP_LOW_RES,
+                    filename=dh.EarthData.TEXTURE,
                     wrap_mode="clamp"
                 )
             )
-            # material=bsdfs.BlendedMaterial(
-            #     weight=textures.BitmapTexture(
-            #         filename=dh.EarthData.SURFACE_BITMAP, wrap_mode="clamp"
-            #     ),
-            #     bsdf_0=bsdfs.DiffuseMaterial(
-            #         reflectance=spectra.SpdSpectrum(filename=dh.EarthData.SOIL_SPECTRUM)
-            #     ),
-            #     bsdf_1=bsdfs.DiffuseMaterial(
-            #         reflectance=spectra.SpdSpectrum(
-            #             filename=dh.EarthData.OCEAN_SPECTRUM
-            #         )
-            #     ),
-            # ),
         )
         self._scene.add_shape(SceneEntity.EARTH.value, earth)
 
@@ -89,6 +79,7 @@ class SceneBuilder:
             width=self._config.sensor.film.width,
             height=self._config.sensor.film.height,
         )
+
         film.set_spectrum(self._config.sensor_bands)
 
         chaser = sensors.PerspectiveCamera(
@@ -97,6 +88,7 @@ class SceneBuilder:
             fov=self._config.sensor.camera.field_of_view,
             to_world=Transform(),
         )
+
         self._scene.add_sensor(SceneEntity.CHASER.value, chaser)
 
     def _build_target(self):

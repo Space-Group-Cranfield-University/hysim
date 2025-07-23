@@ -1,0 +1,1 @@
+earth_model.ply and [earth_texture.png](earth_texture.png) are source from https://science.nasa.gov/resource/earth-3d-model/

@@ -79,12 +79,11 @@ class LightSourceData(StrEnum):
 class EarthData(StrEnum):
     """Enum of path and file names of Earth data"""
 
-    SOIL_SPECTRUM = "soil.spd"
-    OCEAN_SPECTRUM = "ocean.spd"
-    # MESH = "earth.ply"
-    SURFACE_BITMAP = "earth.jpg"
-    MAP_HIGH_RES = "earth_map_21600x10800.jpg"
-    MAP_LOW_RES = "earth_map_5400x2700.jpg"
+    # SOIL_SPECTRUM = "soil.spd"
+    # OCEAN_SPECTRUM = "ocean.spd"
+    MESH = "earth_model.ply"
+    TEXTURE = "earth_texture.png"
+    SURFACE_BITMAP = "earth_surface_bitmap.jpg"
 
     def __new__(cls, file):
         path = "hysim.data.earth_model"
