@@ -3,7 +3,8 @@ from time import monotonic_ns as get_time
 from typing import Final
 
 import mitsuba as mi
-import numpy as np
+import drjit as dr
+
 import spiceypy as spice
 
 from hysim.configs import mission_config as mc
@@ -45,11 +46,12 @@ class RenderController:
 
         mi.set_variant(config.case.mitsuba_variant)
         self._scene_builder = sb.SceneBuilder(config)
-        self.output = mit.Tensor(np.zeros((
-            config.sensor.film.height,
-            config.sensor.film.width,
-            len(config.sensor_bands)
-        )))
+        self.output = dr.zeros(
+            mit.Tensor,
+            (config.sensor.film.height,
+             config.sensor.film.width,
+             len(config.sensor_bands))
+        )
         self._config = config
 
         self.frame_count = config.sensor.camera.frame_count

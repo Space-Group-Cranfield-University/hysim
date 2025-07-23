@@ -3,7 +3,6 @@
 Module to handle transformations from input coordinates in various reference
 frames to the local vertical local horizontal frame of the target.
 """
-
 from dataclasses import dataclass
 from functools import cache
 from typing import TypeVar, Generic, Final, Union
@@ -326,7 +325,14 @@ class PositionData:
 
     def to_state(self, satellite: mc.Satellite) -> StateVector:
         if satellite.position_frame == PositionFormat.STATE_ECI:
-            return spice.prop2b(mu_earth(), np.asarray(satellite.position), self.epoch.delta)
+            state = np.asarray(satellite.position)
+            if self.epoch.delta == 0:
+                return state
+            try:
+                return spice.prop2b(mu_earth(), state, self.epoch.delta)
+            except (spice.SpiceZEROPOSITION, spice.SpiceZEROVELOCITY, spice.SpiceNONCONICMOTION):
+                # logging.warning("Invalid position frame used. NON CONICAL MOTION")
+                return state
         elif satellite.position_frame == PositionFormat.KEPLERIAN:
             return kepler_to_state(satellite.position, self.epoch.base, self.epoch.delta)
         elif satellite.position_frame == PositionFormat.TLE:
