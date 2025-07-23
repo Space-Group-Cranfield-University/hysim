@@ -12,6 +12,13 @@ class Spectrum(MitsubaObject):
     """Abstract base class for Mitsuba spectrum objects"""
 
 
+class RegularSpectrum(Spectrum):
+    type: Literal["regular"] = "regular"
+    values: str
+    wavelength_min: float
+    wavelength_max: float
+
+
 class IrregularSpectrum(Spectrum):
     type: Literal["irregular"] = "irregular"
     wavelengths: list[float]
@@ -42,3 +49,12 @@ class UniformSpectrum(Spectrum):
     value: float
     wavelength_min: Optional[float] = None
     wavelength_max: Optional[float] = None
+
+
+class RGBSpectrum(Spectrum):
+    type: Literal["rgb"] = "rgb"
+    value: list[float]  # Len 3
+
+class D65Spectrum(Spectrum):
+    type: Literal["d65"] = "d65"
+    color: list[float]

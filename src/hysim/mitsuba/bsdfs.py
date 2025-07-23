@@ -1,7 +1,10 @@
 """BSDFs (materials) adapted from:
 https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_bsdfs.html#
 """
+
 from typing import Union, Literal
+
+from pydantic import ConfigDict
 
 from .abc import MitsubaObject
 from .spectra import Spectrum as _Spectrum
@@ -34,3 +37,30 @@ class BlendedMaterial(BSDF):
     weight: Union[float, _Texture]
     bsdf_0: BSDF
     bsdf_1: BSDF
+
+
+class UntypedMaterial(BSDF):
+    """A Mitsuba BSDF that does not have a corresponding class in HySim."""
+
+    type: Literal[
+        "dielectric",
+        "thindielectric",
+        "roughdielectric",
+        "conductor",
+        "hair",
+        "measured",
+        "measured_polarized",
+        "plastic",
+        "roughplastic",
+        "bumpmap",
+        "normalmap",
+        "mask",
+        "null",
+        "polarizer",
+        "retarder",
+        "circular",
+        "pplastic",
+        "principled",
+        "principledthin",
+    ]
+    model_config = ConfigDict(extra="allow")
