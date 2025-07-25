@@ -8,11 +8,10 @@ import logging
 from pathlib import Path
 
 import mitsuba as mi
-import hysim.util.mitsuba_types as mit
 import numpy as np
 
+import hysim.util.mitsuba_types as mit
 from hysim.configs.config import Config
-from hysim.simulator import RenderController
 from hysim.util.constants import ImagingMode, OutputFormat
 
 
@@ -116,7 +115,7 @@ def export_bands(
         file_writer(path / f"band_{i}{output_format.as_suffix}", render_data[:, :, i])
 
 
-def export(config: Config, data: RenderController):
+def export(config: Config, data: mit.Tensor):
     for info in config.case.output:
         output_path = Path(info.file_name)
         if info.format == OutputFormat.EXR:
@@ -127,6 +126,6 @@ def export(config: Config, data: RenderController):
                 ]
             else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
                 wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
-            export_exr(output_path, config.case_directory, data.output, wavelengths)
+            export_exr(output_path, config.case_directory, data, wavelengths)
         else:
-            export_bands(output_path, config.case_directory, data.output, info.format)
+            export_bands(output_path, config.case_directory, data, info.format)

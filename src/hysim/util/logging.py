@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from typing import Any
 
 import mitsuba as mi
+import logging
 
 
 class CustomMitsubaFormatter(mi.Formatter):
@@ -28,3 +30,9 @@ class CustomMitsubaFormatter(mi.Formatter):
         finally:
             mitsuba_logger.set_log_level(log_level)
             del mitsuba_logger
+
+
+def setDebugAttr(obj: object, attr_name: str, value: Any):
+    """Create an attribute only present in debug mode"""
+    if logging.root.getEffectiveLevel() == logging.DEBUG:
+        setattr(obj, attr_name, value)
