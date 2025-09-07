@@ -1,4 +1,5 @@
 import mitsuba as mi
+
 from hysim.util.strenum import StrEnum
 
 
@@ -38,6 +39,10 @@ class OutputFormat(StrEnum):
     EXR = "exr"
     PNG = "png"
     CSV = "csv"
+    @property
+    def as_suffix(self) -> str:
+        """Returns the file extension for the output format"""
+        return f".{self.value}"
 
 
 class PositionFormat(StrEnum):
@@ -45,3 +50,11 @@ class PositionFormat(StrEnum):
     STATE_LVLH = "lvlh"
     KEPLERIAN = "kep"
     TLE = "tle"
+
+
+class SceneEntity(StrEnum):
+    """A list of entities that can be present in a scene"""
+    EARTH = "earth"
+    SUN = "sun"
+    TARGET = "target"
+    CHASER = "chaser"

@@ -3,30 +3,19 @@
 Provides an entry point for package and runs main function
 """
 
-import pkg_resources
+import argparse
 import logging
 import sys
-import argparse
 from pathlib import Path
-from hysim import sim
+
+import pkg_resources
+
+from hysim import simulator
 
 
 def get_package_version(package: str) -> str:
     version = pkg_resources.get_distribution(package).version
     return f"{package} {version}"
-
-def run_case(run_directory: str):
-    case_directory = Path(run_directory)
-
-    if case_directory.is_absolute() is False:
-        case_directory = Path.cwd() / case_directory
-
-    if case_directory.exists() is False:
-        logging.error("Invalid path to case directory. Terminating Hysim")
-        import sys
-        sys.exit()
-
-    sim.run_sim(case_directory)
 
 
 # == CLI ARGUMENTS == #
@@ -42,7 +31,7 @@ parser.add_argument(
 
 # Run Command
 run_command = subparsers.add_parser("run", help="Run simulator case")
-run_command.set_defaults(func=run_case)
+run_command.set_defaults(func=simulator.run)
 run_command.add_argument("--debug", action="store_true")
 run_command.add_argument("-C", "--case_directory", default=Path.cwd(), help="Path to case directory")
 

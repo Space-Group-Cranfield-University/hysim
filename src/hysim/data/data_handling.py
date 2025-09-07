@@ -4,16 +4,19 @@ Contains Database Enums to define data paths and functions to
 handle data retrieval.
 """
 
+import json
+from enum import Enum
 from functools import cache
 from importlib import resources
-from enum import Enum
 from typing import Any
 
-from hysim.util.strenum import StrEnum
+import numpy as np
 
-import json
-
+from hysim.data import spd_reader as spdr
 from hysim.mitsuba.bsdfs import TwoSidedBRDF, DiffuseMaterial
+from hysim.mitsuba.spectra import IrregularSpectrum
+from hysim.util.constants import ImagingMode
+from hysim.util.strenum import StrEnum
 
 
 # ===== IO Error Handling ===== #
@@ -76,10 +79,11 @@ class LightSourceData(StrEnum):
 class EarthData(StrEnum):
     """Enum of path and file names of Earth data"""
 
-    SOIL_SPECTRUM = "soil.spd"
-    OCEAN_SPECTRUM = "ocean.spd"
-    # MESH = "earth.ply"
-    SURFACE_BITMAP = "earth.jpg"
+    # SOIL_SPECTRUM = "soil.spd"
+    # OCEAN_SPECTRUM = "ocean.spd"
+    MESH = "earth_model.ply"
+    TEXTURE = "earth_texture.png"
+    SURFACE_BITMAP = "earth_surface_bitmap.jpg"
 
     def __new__(cls, file):
         path = "hysim.data.earth_model"
@@ -143,7 +147,7 @@ def load_material_database() -> dict[str, TwoSidedBRDF]:
     return materials
 
 
-def get_database_material(material_name: str) -> TwoSidedBRDF:
+def database_material(material_name: str) -> TwoSidedBRDF:
     """Retrieves material dictionary from database"""
     material = load_material_database().get(material_name)
     if material is None:
@@ -181,3 +185,59 @@ def defined_light_sources():
         When called
     """
     raise NotImplementedError()
+
+
+def read_spd(path: str, imaging_mode: ImagingMode) -> list[tuple[str, IrregularSpectrum]]:
+    """Reads spectrum data from a .spd file and returns it as a list of IrregularSpectrum.
+    Supports reading multiple columns of sensitivities from an .spd file.
+
+    Parameters
+    ----------
+    path : str
+        Path to spectrum file
+    imaging_mode : ImagingMode
+        The imaging mode (multispectral or hyperspectral)
+
+    Returns
+    -------
+    list[tuple[str,IrregularSpectrum]]
+        A collection of spectra data in the IrregularSpectrum class
+
+    """
+    spectrum_data = spdr.SPDReader(path)
+    bands: list[tuple[str, IrregularSpectrum]] = []
+    sensitivities = spectrum_data.values
+    wavelengths = spectrum_data.wavelengths
+
+    if imaging_mode == ImagingMode.MULTISPECTRAL:
+        # NOTE: might need to refactored to properly handle single column case
+        if np.ndim(sensitivities) == 1:
+            sensitivities = np.expand_dims(sensitivities, axis=1)
+        count = 0
+        for band_data in sensitivities.T:
+            bands.append(
+                (
+                    f"band_{count}",
+                    IrregularSpectrum(
+                        wavelengths=wavelengths, values=band_data
+                    ),
+                )
+            )
+            count += 1
+
+    elif imaging_mode == ImagingMode.HYPERSPECTRAL:
+        if sensitivities.ndim != 1:
+            raise TypeError("Too many columns for hyperspectral data")
+        for i, _ in enumerate(wavelengths[1:], start=1):
+            band = IrregularSpectrum(
+                wavelengths=wavelengths[i - 1 : i + 1],
+                values=sensitivities[i - 1 : i + 1],
+            )
+            # RuntimeError: [xml_v.cpp:304] The object key '400.0_410.0' contains a '.' character, which is already used as a delimiter in the object path in the scene. Please use '_' instead.
+            name = f"{wavelengths[i - 1]}_{wavelengths[i]}".replace(".", ",")
+            bands.append((name, band))
+    else:
+        raise ValueError(
+            f"Invalid imaging mode, it must be either {ImagingMode.MULTISPECTRAL} or {ImagingMode.HYPERSPECTRAL}"
+        )
+    return bands

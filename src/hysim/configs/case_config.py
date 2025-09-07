@@ -1,17 +1,15 @@
-from typing import Optional
-
 from pydantic.dataclasses import dataclass
 
-from hysim.util.constants import ConfigType, OutputFormat, MitsubaVariant
 from hysim.mitsuba.integrators import Integrator
 from hysim.mitsuba.samplers import Sampler
+from hysim.util.constants import ConfigType, OutputFormat, MitsubaVariant
 
 
 @dataclass(frozen=True)
 class OutputItem:
     format: OutputFormat
+    # TODO: validate its a directory for png and csv or split export types (OutputItem) into separate classes
     file_name: str
-    reference_wavelengths: Optional[list[int]] = None
 
 
 @dataclass(frozen=True)

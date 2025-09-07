@@ -1,10 +1,12 @@
+from typing import Optional, Literal
+
 from pydantic import model_validator
 from pydantic.dataclasses import dataclass
-from typing import Optional, Literal
 from typing_extensions import Self
 
-from hysim.util.constants import ConfigType
 from hysim.data import data_handling as dh
+from hysim.util.constants import ConfigType
+
 
 @dataclass(frozen=True)
 class Part:

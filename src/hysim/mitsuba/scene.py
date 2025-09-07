@@ -6,6 +6,7 @@ from .integrators import Integrator as _Integrator
 from .sensors import Sensor as _Sensor
 from .shapes import Shape as _Shape
 
+
 class Scene(MitsubaObject, NamedObjectsMixin[Union[_Sensor, _Shape, _Emitter]]):
     """Mitsuba scene object
     Use with mitsuba.load_dict() to generate a Mitsuba scene

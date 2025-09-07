@@ -17,9 +17,9 @@ class PlyMesh(Shape):
     type: Literal["ply"] = "ply"
     filename: str
     material: BSDF
-    # face_normals: bool = False
-    # flip_normals: bool = False
-    # flip_tex_coords: bool = False
+    face_normals: bool = False
+    flip_normals: bool = False
+    flip_tex_coords: bool = False
 
 
 class Sphere(Shape):

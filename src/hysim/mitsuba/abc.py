@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, TypeVar, Generic, ClassVar, Union, Annotated
+
 from pydantic import (
     BaseModel,
     field_validator,

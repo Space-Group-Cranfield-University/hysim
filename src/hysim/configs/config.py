@@ -1,17 +1,20 @@
+import logging
 from pathlib import Path
-from typing import Literal, Set, Iterable, Type, Any, Union
+from typing import Literal, Set, Iterable, Type, Union
 
 from pydantic import ValidationError
 from rickle import BaseRickle
-import logging
 
+import hysim.data.data_handling as dh
 from hysim.configs.case_config import CaseConfig
-from hysim.util.constants import ConfigType, ImagingMode, OutputFormat
 from hysim.configs.materials_config import MaterialsConfig
 from hysim.configs.mission_config import MissionConfig
-from hysim.configs.sensor_config import SensorConfig
 from hysim.configs.parts_config import PartsConfig, Part
+from hysim.configs.sensor_config import SensorConfig
 from hysim.mitsuba.bsdfs import BSDF
+from hysim.mitsuba.spectra import Spectrum
+from hysim.util.constants import ConfigType, ImagingMode, OutputFormat
+
 
 def _exit_on_error():
     logging.info("Invalid configuration file. Exiting...")
@@ -50,7 +53,7 @@ class Config:
     """
 
     # The values in this dict start as the config class type, but are replaced with the class instance during _init_configs
-    _configs: dict[ConfigType, Union[Type, Any]] = {
+    _configs: dict[ConfigType, Union[Type, Union[CaseConfig, MissionConfig, SensorConfig, PartsConfig, MaterialsConfig]]] = {
         ConfigType.CASE: CaseConfig,
         ConfigType.MISSION: MissionConfig,
         ConfigType.SENSOR: SensorConfig,
@@ -58,42 +61,51 @@ class Config:
         ConfigType.MATERIAL: MaterialsConfig,
     }
 
-    def __init__(self, case_directory: Path) -> None:
-        # Walk through the case directory and load the configuration files
+    def __init__(self, case_directory: Path):
+        logging.info("Getting user inputs from configuration files")
         self._file_type_ltr: Literal["file_type"] = "file_type"
-        self._case_directory = str(case_directory)
-        _case_files: dict[str, str] = {}
+        self._case_directory = case_directory
         self._directories: Set[str] = set()
+        case_files: dict[str, str] = {}
 
         yaml_ext = {".yml", ".yaml" ".json", ".toml"}
         content_ext = {".spd", ".ply"}
+        # Walk through the case directory and load the configuration files
         for path in case_directory.rglob("*"):
             if path.suffix in yaml_ext:
                 self._init_configs(str(path))
             elif path.suffix in content_ext:
-                _case_files[path.name] = str(path)
+                case_files[path.name] = str(path)
                 self._directories.add(str(path.parent))
 
-        self._sensor_spectrum_path = _case_files[
-            self._configs[ConfigType.SENSOR].spectrum_file
-        ]
+        # TODO: Things to fail fast:
+        #   - User specified spectrum file.
+        #   - User materials names are consistent through all config files.
+        #   - User part names match files
+
+        # Load spectrum file
+        self._sensor_bands = dh.read_spd(case_files[self.sensor.spectrum_file], self.sensor.imaging_mode)
+
+        if (self.sensor.imaging_mode == ImagingMode.MULTISPECTRAL
+                and any(x.format == OutputFormat.EXR for x in self.case.output)):
+            error_message = None
+            input_value = "N/A"
+            if self.sensor.reference_wavelengths is None:
+                error_message = "Reference wavelengths are required for multispectral imaging"
+            elif len(self.sensor.reference_wavelengths) != len(self._sensor_bands):
+                error_message = "The number of reference wavelengths must match the number of bands in the spectrum file"
+                input_value = str(self.sensor.reference_wavelengths)
+            if error_message:
+                _log_config_error(
+                    ConfigType.SENSOR,
+                    "reference_wavelengths",
+                    error_message,
+                    case_files[self.sensor.spectrum_file],
+                    input_value
+                )
+                _exit_on_error()
+
         self._directories.add(str(case_directory))
-
-
-        if self._configs[ConfigType.SENSOR].imaging_mode == ImagingMode.MULTISPECTRAL:
-            for i, output in enumerate(self._configs[ConfigType.CASE].output):
-                if (output.format == OutputFormat.EXR
-                    and output.reference_wavelengths is None
-                ):
-                    _log_config_error(
-                        ConfigType.CASE,
-                        f"output[{i}].reference_wavelengths",
-                        "Reference wavelengths are required for multispectral imaging",
-                        "TODO:",  # TODO: Get path to case config file
-                        "None",
-                    )
-                    _exit_on_error()
-                    break
 
     def _init_configs(self, path: str):
         rickle = BaseRickle(path)
@@ -109,17 +121,17 @@ class Config:
                 _log_config_error(file_type, location, message, path, value)
             _exit_on_error()
         except KeyError:
-            logging.error(f'"{file_type}" is an invalid config type at "{path}"')
+            logging.error(f'"%s" is an invalid config type at "%s"', file_type, path)
             _exit_on_error()
 
     @property
-    def case_directory(self) -> str:
+    def case_directory(self) -> Path:
         return self._case_directory
 
     @property
-    def sensor_spectrum_path(self) -> str:
-        """Returns the path to the sensor spectrum file"""
-        return self._sensor_spectrum_path
+    def sensor_bands(self) -> list[tuple[str, Spectrum]]:
+        """Returns the sensor band sensitivity"""
+        return self._sensor_bands
 
     @property
     def directories(self) -> Iterable[str]:

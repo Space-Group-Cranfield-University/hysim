@@ -4,9 +4,8 @@ https://mitsuba.readthedocs.io/en/stable/src/generated/plugins_emitters.html
 
 from typing import Optional, Literal
 
-from typing_extensions import Self
-
 from pydantic import model_validator
+from typing_extensions import Self
 
 from .abc import MitsubaObject, Vector, Transform
 from .spectra import Spectrum as _Spectrum
