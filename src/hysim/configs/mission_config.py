@@ -1,8 +1,9 @@
 from typing import Union, Literal
-from typing_extensions import Self
 
 from pydantic import field_validator, model_validator, ValidationInfo
 from pydantic.dataclasses import dataclass
+from typing_extensions import Self
+
 from hysim.util.constants import ConfigType, PositionFormat
 
 

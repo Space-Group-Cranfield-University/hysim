@@ -1,7 +1,7 @@
 from pydantic.dataclasses import dataclass
 
-from hysim.util.constants import ConfigType
 from hysim.mitsuba.bsdfs import BSDF
+from hysim.util.constants import ConfigType
 
 
 @dataclass(frozen=True)

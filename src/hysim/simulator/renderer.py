@@ -15,7 +15,7 @@ from hysim.util import mitsuba_types as mit, logging as lg
 
 class Frame:
     """Represents an instantaneous snapshot (a frame) of the scene at a specified epoch"""
-
+    #TODO: convert to function
     def __init__(self, epoch: ft.Epoch, mission_config: mc.MissionConfig, scene_builder: sb.SceneBuilder):
 
         self.epoch: Final = epoch
@@ -30,7 +30,7 @@ class Frame:
         sim: mi.Scene = mi.load_dict(self.scene_dict)
         with lg.CustomMitsubaFormatter.log(frame_index):
             output = mi.render(sim)
-            lg.setDebugAttr(self,"output",output)
+            lg.setdebugattr(self, "output", output)
             return output
 
 

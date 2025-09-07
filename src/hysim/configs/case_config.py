@@ -1,10 +1,8 @@
-from typing import Optional
-
 from pydantic.dataclasses import dataclass
 
-from hysim.util.constants import ConfigType, OutputFormat, MitsubaVariant
 from hysim.mitsuba.integrators import Integrator
 from hysim.mitsuba.samplers import Sampler
+from hysim.util.constants import ConfigType, OutputFormat, MitsubaVariant
 
 
 @dataclass(frozen=True)
