@@ -38,7 +38,7 @@ def setdebugattr(obj: object, attr_name: str, value: Any):
         setattr(obj, attr_name, value)
 
 @contextmanager
-def switch_log_level(level):
+def log_level_context(level):
     logger = logging.getLogger()
     old_level = logger.level
     try:

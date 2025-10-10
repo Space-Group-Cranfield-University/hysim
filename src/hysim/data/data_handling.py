@@ -166,7 +166,7 @@ def sun_spectrum_rgb() -> "mi.Color3f":
     # def norm(data):
     #     return (data - np.min(data)) / (np.max(data) - np.min(data))
     # color2 = mi.spectrum_list_to_srgb(wavelengths, norm(values), False, True)
-    return color/np.max(color)
+    return color/color.numpy().max()
 
 
 def defined_materials() -> list[str]:
