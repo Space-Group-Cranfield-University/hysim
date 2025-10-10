@@ -39,8 +39,10 @@ class OutputFormat(StrEnum):
     EXR = "exr"
     PNG = "png"
     CSV = "csv"
+    GIF = "gif"
+    
     @property
-    def as_suffix(self) -> str:
+    def ext(self) -> str:
         """Returns the file extension for the output format"""
         return f".{self.value}"
 

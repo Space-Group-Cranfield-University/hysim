@@ -36,3 +36,13 @@ def setdebugattr(obj: object, attr_name: str, value: Any):
     """Create an attribute only present in debug mode"""
     if logging.root.getEffectiveLevel() == logging.DEBUG:
         setattr(obj, attr_name, value)
+
+@contextmanager
+def switch_log_level(level):
+    logger = logging.getLogger()
+    old_level = logger.level
+    try:
+        logger.setLevel(level)
+        yield
+    finally:
+        logger.setLevel(old_level)

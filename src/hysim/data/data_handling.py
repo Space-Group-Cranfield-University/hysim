@@ -10,6 +10,7 @@ from functools import cache
 from importlib import resources
 from typing import Any
 
+import mitsuba as mi
 import numpy as np
 
 from hysim.data import spd_reader as spdr
@@ -159,6 +160,15 @@ def sun_spectrum_path() -> str:
     return get_data_path(LightSourceData.PATH, LightSourceData.SUNLIGHT_SPECTRUM)
 
 
+def sun_spectrum_rgb() -> "mi.Color3f":
+    wavelengths, values = mi.spectrum_from_file(sun_spectrum_path())
+    color = mi.spectrum_list_to_srgb(wavelengths, values, False, True)
+    # def norm(data):
+    #     return (data - np.min(data)) / (np.max(data) - np.min(data))
+    # color2 = mi.spectrum_list_to_srgb(wavelengths, norm(values), False, True)
+    return color/np.max(color)
+
+
 def defined_materials() -> list[str]:
     """Returns list of materials inside material database"""
     materials = load_material_database()
@@ -224,7 +234,6 @@ def read_spd(path: str, imaging_mode: ImagingMode) -> list[tuple[str, IrregularS
                 )
             )
             count += 1
-
     elif imaging_mode == ImagingMode.HYPERSPECTRAL:
         if sensitivities.ndim != 1:
             raise TypeError("Too many columns for hyperspectral data")

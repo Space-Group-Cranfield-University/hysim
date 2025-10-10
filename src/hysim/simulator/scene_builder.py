@@ -35,7 +35,6 @@ class SceneBuilder:
         self._config = config
         self._scene = scene.Scene(integrator=config.case.integrator)
 
-    def build(self):
         logging.debug("Building the Earth")
         self._build_earth()
         logging.debug("Building the Sun")
@@ -46,7 +45,7 @@ class SceneBuilder:
         self._build_target()
 
     def _build_earth(self):
-        # TODO: Improve earth model and orientation. Currently a png of earth applied to
+        # TODO: Improve earth model and its orientation. Currently a png of earth applied to
         #  an oblate spheroid mesh, with conversion from rgb to spectral data is done by Mitsuba.
         earth = shapes.PlyMesh(
             to_world=Transform(),
@@ -104,13 +103,25 @@ class SceneBuilder:
 
             self._scene.add_shape(part_name, mesh)
 
-    def set_positions(self, position_data: ft.PositionData) -> dict[str, Any]:
+
+    def set_positions(self, position_data: ft.PositionData, rgb:bool = False) -> dict[str, Any]:
         d = self._scene.asdict()
         d[SceneEntity.SUN]["direction"] = position_data.get(SceneEntity.SUN)
         d[SceneEntity.EARTH]["to_world"] = position_data.get(SceneEntity.EARTH)
         d[SceneEntity.CHASER]["to_world"] = position_data.get(SceneEntity.CHASER)
         for part_name in self._config.parts.keys():
             d[part_name]["to_world"] = position_data.get(SceneEntity.TARGET)
+
+        # TODO: change this to edit the mi.Properties once mi.load_dict is done
+        if rgb:
+            d[SceneEntity.CHASER]["film"] = films.HDRFilm(
+                width=self._config.sensor.film.width,
+                height=self._config.sensor.film.height,
+            ).asdict()
+            d[SceneEntity.SUN]["irradiance"] = {
+                "type": "rgb",
+                "value" : dh.sun_spectrum_rgb(),
+            }
         return d
 
     @property

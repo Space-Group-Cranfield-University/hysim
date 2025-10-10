@@ -3,20 +3,29 @@
 This module contains classes to handle and format output render data from
 the simulator.
 """
-
 import logging
+import logging.handlers
 from pathlib import Path
 
+import drjit as dr
 import mitsuba as mi
 import numpy as np
+from PIL import Image
 
 import hysim.util.mitsuba_types as mit
 from hysim.configs.config import Config
 from hysim.util.constants import ImagingMode, OutputFormat
+from hysim.util.logging import switch_log_level
 
 
 def _log_exporting(output_format: OutputFormat):
-    logging.info("Exporting results as a %s file", output_format.as_suffix)
+    logging.info("Exporting results as a %s file", output_format.ext)
+
+
+def _add_ext(file_name: Path, output_format: OutputFormat):
+    if file_name.suffix != output_format.ext:
+        file_name = file_name.with_suffix(output_format.ext)
+    return file_name
 
 
 def create_channel_names(wavelengths: list[float]) -> list[str]:
@@ -26,16 +35,7 @@ def create_channel_names(wavelengths: list[float]) -> list[str]:
     return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
 
 
-# def export_gif(file_name: Path, case_directory: Path, frame_data: list[mit.Tensor]):
-#     pass
-
-
-def export_exr(
-    file_name: Path,
-    case_directory: Path,
-    render_data: mit.Tensor,
-    wavelengths: list[float]
-):
+def export_exr(file_name: Path, case_directory: Path, render_data: mit.Tensor, wavelengths: list[float]):
     _log_exporting(OutputFormat.EXR)
 
     channel_names = create_channel_names(wavelengths)
@@ -57,8 +57,7 @@ def export_exr(
     bitmap.metadata()["pixelAspectRatio"] = 1
     bitmap.metadata()["screenWindowWidth"] = 1
 
-    if file_name.suffix != OutputFormat.EXR.as_suffix:
-        file_name = file_name.with_suffix(OutputFormat.EXR.as_suffix)
+    file_name = _add_ext(file_name, OutputFormat.EXR)
 
     file_path = case_directory / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -101,7 +100,7 @@ def export_bands(
         logging.debug(
             'The directory "%s" already exists. The %s files inside may be overwritten.',
             path,
-            output_format.as_suffix,
+            output_format.ext,
         )
     else:
         path.mkdir(parents=True, exist_ok=True)
@@ -111,9 +110,25 @@ def export_bands(
         file_writer = lambda file_name, data: mi.util.write_bitmap(str(file_name), data)
     elif output_format == OutputFormat.CSV:
         file_writer = lambda file_name, data: np.savetxt(file_name, np.array(data), delimiter=",")
-    for i in range(len(render_data[0, 0, :])):
-        file_writer(path / f"band_{i}{output_format.as_suffix}", render_data[:, :, i])
 
+    for i in range(len(render_data[0, 0, :])):
+        file_writer(path / f"band_{i}{output_format.ext}", render_data[:, :, i])
+
+
+def export_gif(file_name: Path, case_directory: Path, render: dr.auto.TensorXf):
+    _log_exporting(OutputFormat.GIF)
+    file_path = _add_ext(file_name, OutputFormat.GIF)
+    file_path = case_directory / file_path
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write_frame(frame_index):
+        path = str(file_path.parent / f"frame_{frame_index}.png")
+        mi.util.write_bitmap(path, render[..., frame_index], False)
+        return Image.open(path)
+
+    with switch_log_level(logging.INFO):
+        images = [write_frame(index) for index in range(render.shape[3])]
+        images[0].save(file_path, save_all=True, append_images=images[1:], duration=1000, loop=0)
 
 def export(config: Config, data: mit.Tensor):
     for info in config.case.output:
@@ -127,5 +142,7 @@ def export(config: Config, data: mit.Tensor):
             else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
                 wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
             export_exr(output_path, config.case_directory, data, wavelengths)
+        elif info.format == OutputFormat.GIF:
+            export_gif(output_path, config.case_directory, data)
         else:
             export_bands(output_path, config.case_directory, data, info.format)
