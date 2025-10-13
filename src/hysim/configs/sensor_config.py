@@ -12,6 +12,11 @@ class Camera:
     shutter_time: Optional[NonNegativeFloat] = 0
     frame_count: Optional[PositiveInt] = 1
 
+    @property
+    def dt(self):
+        """In seconds"""
+        return self.shutter_time/self.frame_count
+
 
 @dataclass(frozen=True)
 class Film:
@@ -27,3 +32,5 @@ class SensorConfig:
     imaging_mode: ImagingMode
     spectrum_file: str
     reference_wavelengths: Optional[list[int]] = None
+
+    # TODO: validate reference_wavelenghts when imaging_mode is Multispectral

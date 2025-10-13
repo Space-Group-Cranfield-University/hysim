@@ -105,6 +105,7 @@ class SceneBuilder:
 
 
     def set_positions(self, position_data: ft.PositionData, rgb:bool = False) -> dict[str, Any]:
+        # TODO: change this to edit the mi.SceneParameters once mi.load_dict is done
         d = self._scene.asdict()
         d[SceneEntity.SUN]["direction"] = position_data.get(SceneEntity.SUN)
         d[SceneEntity.EARTH]["to_world"] = position_data.get(SceneEntity.EARTH)
@@ -112,7 +113,6 @@ class SceneBuilder:
         for part_name in self._config.parts.keys():
             d[part_name]["to_world"] = position_data.get(SceneEntity.TARGET)
 
-        # TODO: change this to edit the mi.Properties once mi.load_dict is done
         if rgb:
             d[SceneEntity.CHASER]["film"] = films.HDRFilm(
                 width=self._config.sensor.film.width,

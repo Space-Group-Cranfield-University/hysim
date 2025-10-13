@@ -10,7 +10,7 @@ class CustomMitsubaFormatter(mi.Formatter):
         super().__init__()
         self.frame_index = frame_index
 
-    def format(self, level: mi.LogLevel, thread, class_, file, line, msg):
+    def format(self, level: mi.LogLevel, cname, fname, line, msg):
         return f" {level.name.upper():8} {chr(0x02523)}{chr(0x02501)} Frame {self.frame_index} - {msg}"
 
     @staticmethod
@@ -26,11 +26,10 @@ class CustomMitsubaFormatter(mi.Formatter):
         try:
             mitsuba_logger.set_formatter(CustomMitsubaFormatter(frame_index))
             mitsuba_logger.set_log_level(mi.LogLevel.Info)
-            yield
+            yield mitsuba_logger
         finally:
             mitsuba_logger.set_log_level(log_level)
             del mitsuba_logger
-
 
 def setdebugattr(obj: object, attr_name: str, value: Any):
     """Create an attribute only present in debug mode"""

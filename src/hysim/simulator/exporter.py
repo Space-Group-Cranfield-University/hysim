@@ -103,7 +103,7 @@ def export_bands(dir_path: Path, render: TensorXf, output_format: OutputFormat):
         file_writer(dir_path / f"band_{i}{output_format.ext}", render[:, :, i])
 
 
-def export_gif(file_path: Path, render: TensorXf):
+def export_gif(file_path: Path, render: TensorXf, duration: float):
     _log_exporting(OutputFormat.GIF)
     file_path = _add_ext(file_path, OutputFormat.GIF)
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -118,12 +118,12 @@ def export_gif(file_path: Path, render: TensorXf):
 
     with log_level_context(logging.INFO):
         images = [write_frame(index) for index in range(render.shape[3])]
-        images[0].save(file_path, save_all=True, append_images=images[1:], duration=1000, loop=0)
+        images[0].save(file_path, save_all=True, append_images=images[1:], duration=int(duration*1000), loop=0)
 
 
-def export(config: Config, data: TensorXf):
+def export(config: Config, data):
     for info in config.case.output:
-        output_path = config.case_directory / Path(info.file_name)
+        output_path = config.case_directory / Path(info.file_name) # TODO: check for absolute paths
         if info.format == OutputFormat.EXR:
             if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
                 wavelengths = [  # User rolling average of narrow band values
@@ -132,8 +132,8 @@ def export(config: Config, data: TensorXf):
                 ]
             else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
                 wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
-            export_exr(output_path, data, wavelengths)
+            export_exr(output_path, data.spectral, wavelengths)
         elif info.format == OutputFormat.GIF:
-            export_gif(output_path, data)
+            export_gif(output_path, data.rgb, config.sensor.camera.dt)
         else:
-            export_bands(output_path, data, info.format)
+            export_bands(output_path, data.spectral, info.format)
