@@ -45,3 +45,16 @@ def log_level_context(level):
         yield
     finally:
         logger.setLevel(old_level)
+
+@contextmanager
+def log_level_context_mitsuba(level: mi.LogLevel):
+    # NOTE: There is no progress bar displayed in the console if mi.variant() is not a scalar variant
+    # This is to hide the progress bar
+    logger = mi.Thread.thread().logger()
+    log_level = logger.log_level()
+    try:
+        logger.set_log_level(level)
+        yield logger
+    finally:
+        logger.set_log_level(log_level)
+        del logger
