@@ -1,43 +1,18 @@
 import logging
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Generator
 
 import mitsuba as mi
+import rich.progress as pb
 
 
-class CustomMitsubaFormatter(mi.Formatter):
-    def __init__(self, frame_index: int):
-        super().__init__()
-        self.frame_index = frame_index
-
-    def format(self, level: mi.LogLevel, cname, fname, line, msg):
-        return f" {level.name.upper():8} {chr(0x02523)}{chr(0x02501)} Frame {self.frame_index} - {msg}"
-
-    @staticmethod
-    @contextmanager
-    def log(frame_index: int):
-        """Creates a custom mitsuba formatter to match HySim and sets mitsuba's logger to use
-        it. Also sets the log level to mi.LogLevel.Info to make sure the start and finished
-        rendering messages are displayed."""
-
-        # NOTE: There is no progress bar displayed in the console if mi.variant() is not a scalar variant
-        mitsuba_logger = mi.Thread.thread().logger()
-        log_level = mitsuba_logger.log_level()
-        try:
-            mitsuba_logger.set_formatter(CustomMitsubaFormatter(frame_index))
-            mitsuba_logger.set_log_level(mi.LogLevel.Info)
-            yield mitsuba_logger
-        finally:
-            mitsuba_logger.set_log_level(log_level)
-            del mitsuba_logger
-
-def setdebugattr(obj: object, attr_name: str, value: Any):
+def set_debug_attr(obj: object, attr_name: str, value: Any):
     """Create an attribute only present in debug mode"""
     if logging.root.getEffectiveLevel() == logging.DEBUG:
         setattr(obj, attr_name, value)
 
 @contextmanager
-def log_level_context(level):
+def log_level(level):
     logger = logging.getLogger()
     old_level = logger.level
     try:
@@ -47,14 +22,51 @@ def log_level_context(level):
         logger.setLevel(old_level)
 
 @contextmanager
-def log_level_context_mitsuba(level: mi.LogLevel):
+def log_level_mitsuba(level: mi.LogLevel):
     # NOTE: There is no progress bar displayed in the console if mi.variant() is not a scalar variant
-    # This is to hide the progress bar
+    # This is to hide the progress bar if in said variant
     logger = mi.Thread.thread().logger()
-    log_level = logger.log_level()
+    old_level = logger.log_level()
     try:
         logger.set_log_level(level)
         yield logger
     finally:
-        logger.set_log_level(log_level)
+        logger.set_log_level(old_level)
         del logger
+
+@contextmanager
+def progress_bar(frame_count: int, description: str) -> Generator[tuple[pb.Progress, pb.TaskID], Any, None]:
+    class CountColumn(pb.ProgressColumn):
+        def render(self, _task: "pb.Task") -> pb.Text:
+            completed = int(_task.completed)
+            _total = int(_task.total) if _task.total is not None else "?"
+            unit = " frames"
+            total_width = len(str(_total))
+            return pb.Text(
+                f"{completed:{total_width}d}/{_total}{unit}",
+                style="progress.download",
+            )
+
+    if frame_count == 1:
+        total = None
+        transient = True
+        columns = (
+            pb.TextColumn("[progress.description]{task.description}"),
+            pb.BarColumn(),
+            pb.TimeElapsedColumn(),
+        )
+    else:
+        total = frame_count
+        transient = False
+        columns = (
+            pb.TextColumn("[progress.description]{task.description}"),
+            pb.SpinnerColumn(finished_text=":heavy_check_mark:"),
+            pb.BarColumn(),
+            CountColumn(),
+            pb.TimeElapsedColumn(),
+            # FramesRenderedPerSeconds
+        )
+
+    with pb.Progress(*columns, transient=transient) as pbar:
+        task = pbar.add_task(description, total=total)
+        yield pbar, task

@@ -13,7 +13,7 @@ from drjit.auto import TensorXf
 
 from hysim.configs.config import Config
 from hysim.util.constants import ImagingMode, OutputFormat
-from hysim.util.logging import log_level_context
+from hysim.util.logging import log_level
 
 
 def _log_exporting(output_format: OutputFormat):
@@ -116,7 +116,7 @@ def export_gif(file_path: Path, render: TensorXf, duration: float):
         # mi.util.write_bitmap(path, render[..., frame_index], False)
         # return Image.open(path)
 
-    with log_level_context(logging.INFO):
+    with log_level(logging.INFO):
         images = [write_frame(index) for index in range(render.shape[3])]
         images[0].save(file_path, save_all=True, append_images=images[1:], duration=int(duration*1000), loop=0)
 
