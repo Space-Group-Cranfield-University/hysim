@@ -36,6 +36,7 @@ class OutputItem(BaseModel):
 class EXROutput(OutputItem):
     ext: ClassVar[Literal[".exr"]] = ".exr"
     frames: bool = False # Include individual frames
+    metadata_precision: int = 2
 
 
 class PNGOutput(OutputItem):

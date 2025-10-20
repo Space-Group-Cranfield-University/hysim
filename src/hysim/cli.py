@@ -5,28 +5,20 @@ Provides an entry point for package and runs main function
 
 import argparse
 import logging
-import sys
 from pathlib import Path
 
-import pkg_resources
-
 from hysim import simulator
-
-
-def get_package_version(package: str) -> str:
-    version = pkg_resources.get_distribution(package).version
-    return f"{package} {version}"
-
+from hysim.util.logging import init_logger, hysim_version
 
 # == CLI ARGUMENTS == #
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(prog="HySim")
 subparsers = parser.add_subparsers(
     prog="command", dest="command", metavar="command"
 )
 
 # Version Command
 parser.add_argument(
-    "-V", "--version", action="version", version=get_package_version("hysim")
+    "-V", "--version", action="version", version=f"%(prog)s {hysim_version()}"
 )
 
 # Run Command
@@ -56,12 +48,7 @@ def main():
     else:
         logging_level = logging.INFO
 
-    # Logger
-    logging.basicConfig(
-        format=' %(levelname)-8s %(message)s',
-        stream=sys.stdout,
-        level=logging_level
-    )
+    init_logger(logging_level)
 
     args.func(args.case_directory)
 

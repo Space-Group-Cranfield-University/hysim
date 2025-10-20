@@ -5,7 +5,7 @@ the simulator.
 """
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Any
 
 import drjit as dr
 import mitsuba as mi
@@ -47,7 +47,12 @@ def create_channel_names(wavelengths: list[float]) -> list[str]:
     return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
 
 
-def export_exr(config: Config, render: TensorXf, info: EXROutput):
+def set_metadata(bmp: mi.Bitmap, metadata: dict[str,Any]):
+    m = bmp.metadata()
+    for key, value in metadata.items():
+        m[key] = value
+
+def export_exr(config: Config, render: TensorXf, info: EXROutput, metadata:dict, frame_metadata:list[dict]):
     if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
         wavelengths = [  # User rolling average of narrow band values
             (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
@@ -76,27 +81,24 @@ def export_exr(config: Config, render: TensorXf, info: EXROutput):
         frames_dir.mkdir(exist_ok=True)
         logging.info('Exporting %s frames at "%s"', info.ext, frames_dir)
         for frame_index in range(render.shape[3]):
-            mi.Bitmap(
-                render[...,frame_index],
+            bitmap = mi.Bitmap(
+                render[..., frame_index],
                 pixel_format=pixel_format,
                 channel_names=channel_names,
-            ).write_async(str(frames_dir / f"frame_{frame_index}{info.ext}"))
+            )
+            set_metadata(bitmap, frame_metadata[frame_index])
+            bitmap.write_async(str(frames_dir / f"frame_{frame_index}{info.ext}"))
 
     # ======================= #
-    data = _sum_frames(render, config)
+    all_frames = _sum_frames(render, config)
     # ======================= #
 
     bitmap = mi.Bitmap(
-        data,
+        all_frames,
         pixel_format=pixel_format,
         channel_names=channel_names,
     )
-
-    # TODO: add more metadata relevant to HySim. E.g. HySim version, frame count etc
-    metadata = bitmap.metadata()
-    metadata["pixelAspectRatio"] = 1
-    metadata["screenWindowWidth"] = 1
-
+    set_metadata(bitmap, metadata)
 
     logging.info('Exporting %s at "%s"', info.ext, file_path)
     bitmap.write_async(str(file_path))
@@ -142,7 +144,7 @@ def export_gif(config: Config, render: TensorXf, info: GIFOutput):
 
 def export(config: Config, data: Render):
     export_map = {
-        EXROutput: lambda c,i: export_exr(c, data.spectral, i),
+        EXROutput: lambda c,i: export_exr(c, data.spectral, i, data.metadata, data.frame_metadata),
         PNGOutput: lambda c,i: export_bands(c, _sum_frames(data.spectral, c), i),
         CSVOutput: lambda c,i: export_bands(c, _sum_frames(data.spectral, c), i),
         GIFOutput: lambda c,i: export_gif(c, data.rgb, i),
@@ -150,5 +152,5 @@ def export(config: Config, data: Render):
 
     for info in vars(config.case.output).values():
         if info is not None:
-            logging.info("Exporting results as a %s file(s)", info.ext)
+            logging.info("Exporting results as %s file(s)", info.ext)
             export_map[type(info)](config, info)

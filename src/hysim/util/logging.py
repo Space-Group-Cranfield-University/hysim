@@ -1,15 +1,26 @@
 import logging
+import sys
 from contextlib import contextmanager
 from typing import Any, Generator
 
 import mitsuba as mi
+import pkg_resources
 import rich.progress as pb
 
 
-def set_debug_attr(obj: object, attr_name: str, value: Any):
-    """Create an attribute only present in debug mode"""
-    if logging.root.getEffectiveLevel() == logging.DEBUG:
-        setattr(obj, attr_name, value)
+def hysim_version() -> str:
+    return pkg_resources.get_distribution("hysim").version
+
+def init_logger(log_level):
+    logging.basicConfig(
+        format=' %(levelname)-8s %(message)s',
+        stream=sys.stdout,
+        level=log_level,
+        #handlers=[RichHandler(show_time=False,show_path=False, rich_tracebacks=True)]
+    )
+
+def level_format(log_level):
+    return f" {logging.getLevelName(log_level).upper():8} "
 
 @contextmanager
 def log_level(level):
@@ -47,11 +58,12 @@ def progress_bar(frame_count: int, description: str) -> Generator[tuple[pb.Progr
                 style="progress.download",
             )
 
+    text_format = f"{level_format(logging.INFO)}[progress.description]{{task.description}}"
     if frame_count == 1:
         total = None
         transient = True
         columns = (
-            pb.TextColumn("[progress.description]{task.description}"),
+            pb.TextColumn(text_format),
             pb.BarColumn(),
             pb.TimeElapsedColumn(),
         )
@@ -59,12 +71,11 @@ def progress_bar(frame_count: int, description: str) -> Generator[tuple[pb.Progr
         total = frame_count
         transient = False
         columns = (
-            pb.TextColumn("[progress.description]{task.description}"),
+            pb.TextColumn(text_format),
             pb.SpinnerColumn(finished_text=":heavy_check_mark:"),
             pb.BarColumn(),
             CountColumn(),
             pb.TimeElapsedColumn(),
-            # FramesRenderedPerSeconds
         )
 
     with pb.Progress(*columns, transient=transient) as pbar:
