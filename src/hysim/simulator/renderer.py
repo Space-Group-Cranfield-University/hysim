@@ -19,6 +19,7 @@ class Render:
     rgb: TensorXf | None
     # monochromatic: TensorXF | None
 
+
 def render(config: Config) -> Render:
     logging.info("Setting up SPICE kernels")
     spice.furnsh(dh.kernel_paths())
@@ -32,7 +33,7 @@ def render(config: Config) -> Render:
     frame_count = config.sensor.camera.frame_count
     dt = config.sensor.camera.dt
     positions = [
-        ft.PositionData(config.mission,ft.Epoch(epoch, dt * frame))
+        ft.PositionData(config.mission, ft.Epoch(epoch, dt * frame))
         for frame in range(frame_count)
     ]
 
@@ -44,16 +45,19 @@ def render(config: Config) -> Render:
     del file_resolver
 
     def render_frames(rgb: bool):
-        output: TensorXf
-        description = f" {'INFO':8} "
-        height = config.sensor.film.height
-        width = config.sensor.film.width
         if rgb:
-            output = dr.empty(TensorXf,(height, width, 3, frame_count))
-            description += "Rendering [RGB]:"
+            s = "RGB"
+            bands = 3
         else:
-            output = dr.zeros(TensorXf,(height, width, len(config.sensor_bands)))
-            description += f"Rendering [{config.sensor.imaging_mode.capitalize()}]:"
+            s = config.sensor.imaging_mode.capitalize()
+            bands = len(config.sensor_bands)
+
+        output: TensorXf
+        description = f" {'INFO':8} Rendering [{s}]:"
+        output = dr.empty(
+            TensorXf,
+            (config.sensor.film.height, config.sensor.film.width, bands, frame_count),
+        )
 
         with progress_bar(frame_count, description.ljust(36)) as (progress, task):
             for i in range(frame_count):
@@ -64,14 +68,10 @@ def render(config: Config) -> Render:
                 # logging.debug(scene_builder.scene.asdict())
                 scene: mi.Scene = mi.load_dict(scene_dict)
 
-                with log_level_mitsuba(mi.LogLevel.Warn):
+                with log_level_mitsuba(mi.LogLevel.Warn): # Hide Mitsuba progress bar when scalar variant
                     frame: TensorXf = mi.render(scene)
 
-                if rgb:
-                    output[..., i] = frame.array
-                else:
-                    output += frame * dt
-
+                output[..., i] = frame.array
                 dr.eval(output)
                 progress.advance(task)
         return output
@@ -80,9 +80,9 @@ def render(config: Config) -> Render:
     t0 = get_time()
 
     data = Render()
-    if config.case.requires_spectral:
+    if config.case.output.requires_spectral:
         data.spectral = render_frames(False)
-    if config.case.requires_rgb:
+    if config.case.output.requires_rgb:
         data.rgb = render_frames(True)
 
     t = (get_time() - t0) / 1e9
