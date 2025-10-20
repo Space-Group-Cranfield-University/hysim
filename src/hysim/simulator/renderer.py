@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 from time import monotonic_ns as get_time
 from typing import Any, Optional
@@ -13,7 +11,7 @@ from drjit.auto import TensorXf
 from hysim.configs.config import Config
 from hysim.data import data_handling as dh
 from hysim.simulator import frame_transforms as ft, scene_builder as sb
-from hysim.util.logging import log_level_mitsuba, progress_bar, hysim_version
+from hysim.util.logging import log_level_mitsuba, progress_bar, hysim_version, pretty
 
 
 def render(config: Config) -> "Render":
@@ -37,8 +35,8 @@ def render(config: Config) -> "Render":
     file_resolver = mi.Thread.thread().file_resolver()
     for path in config.directories:
         file_resolver.append(path)
-        logging.debug(f"{chr(0x02523)+chr(0x02501)} {path}")
     del file_resolver
+    logging.debug("Directories:\n%s",pretty(config.directories))
 
     def render_frames(rgb: bool):
         if rgb:
@@ -86,7 +84,11 @@ def render(config: Config) -> "Render":
     if round(t, 1) > 0:  # and self.frame_count > 1:
         duration = f" (took {t:.2f}s)"
     logging.info(f"Renders complete.{duration}")
-    data.create_metadata(config, position_data)
+
+    if config.case.output.requires_spectral:
+        data.create_metadata(config, position_data)
+        logging.debug("Exr file metadata:\n%s",pretty(data.metadata))
+
     return data
 
 
@@ -100,7 +102,6 @@ class Render:
 
     def create_metadata(self, config: Config, position_data: list[ft.PositionData]):
         frame_count = config.sensor.camera.frame_count
-        precision = config.case.output.exr.metadata_precision
         self.frame_metadata = [
             {
                 "hysim.version": hysim_version(),
@@ -109,11 +110,11 @@ class Render:
                 "hysim.sensor.frameIndex": i,
                 "hysim.sensor.fov": config.sensor.camera.field_of_view,
                 "hysim.sensor.shutterTime": f"{config.sensor.camera.shutter_time}s",
-                "hysim.eci.target": f"{np.array_str(position_data[i].eci.target/1000, precision=precision)}km",
-                "hysim.eci.chaser": f"{np.array_str(position_data[i].eci.chaser/1000, precision=precision)}km",
-                "hysim.eci.sun": f"{np.array_str(position_data[i].eci.sun/1000, precision=precision)}km",
-                "hysim.eci.targetToChaser": f"{position_data[i].relative_distance:.{precision}f}m",
-                "hysim.epoch": spice.et2utc(position_data[i].epoch, 'ISOC',precision),
+                "hysim.eci.target": f"{np.array_str(position_data[i].eci.target/1000, precision=10)}km",
+                "hysim.eci.chaser": f"{np.array_str(position_data[i].eci.chaser/1000, precision=10)}km",
+                "hysim.eci.sun": f"{np.array_str(position_data[i].eci.sun/1000, precision=10)}km",
+                "hysim.eci.targetToChaser": f"{position_data[i].relative_distance:.2f}m",
+                "hysim.epoch": spice.et2utc(position_data[i].epoch, 'ISOC',2),
             }
             for i in range(frame_count)]
         self.metadata = dict(self.frame_metadata[0])

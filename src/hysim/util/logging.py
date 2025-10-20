@@ -6,6 +6,7 @@ from typing import Any, Generator
 import mitsuba as mi
 import pkg_resources
 import rich.progress as pb
+from rich.pretty import pretty_repr
 
 
 def hysim_version() -> str:
@@ -19,8 +20,9 @@ def init_logger(log_level):
         #handlers=[RichHandler(show_time=False,show_path=False, rich_tracebacks=True)]
     )
 
-def level_format(log_level):
-    return f" {logging.getLevelName(log_level).upper():8} "
+
+def pretty(_object) -> str:
+    return pretty_repr(_object)
 
 @contextmanager
 def log_level(level):
@@ -58,7 +60,7 @@ def progress_bar(frame_count: int, description: str) -> Generator[tuple[pb.Progr
                 style="progress.download",
             )
 
-    text_format = f"{level_format(logging.INFO)}[progress.description]{{task.description}}"
+    text_format = "[progress.description]{task.description}"
     if frame_count == 1:
         total = None
         transient = True
