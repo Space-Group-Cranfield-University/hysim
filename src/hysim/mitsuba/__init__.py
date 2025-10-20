@@ -8,3 +8,5 @@ For the Mitsuba python scene dictionary format see here:
 
 For the Mitsuba plugin reference see here:
     https://mitsuba.readthedocs.io/en/stable/src/plugin_reference.html"""
+
+#TODO: clean up remove most of it, keep only the stuff that will validate user input

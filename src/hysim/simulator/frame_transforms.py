@@ -372,3 +372,9 @@ class PositionData:
         if key == SceneEntity.SUN:
             return MVector(self.lvlh.sun)
         return self.transforms.__dict__[key]
+
+    @property
+    def relative_distance(self) -> float:
+        """Calculates relative distance between the target and chaser in a 3d
+        cartesian coordinate system."""
+        return magnitude(self.lvlh.target - self.lvlh.chaser)

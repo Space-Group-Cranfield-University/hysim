@@ -3,21 +3,42 @@
 This module contains classes to handle and format output render data from
 the simulator.
 """
-
 import logging
 from pathlib import Path
+from typing import Union, Any
 
+import drjit as dr
 import mitsuba as mi
 import numpy as np
+from PIL import Image
+from drjit.auto import TensorXf
 
-import hysim.util.mitsuba_types as mit
+from hysim.configs.case_config import EXROutput, OutputItem, PNGOutput, CSVOutput, \
+    GIFOutput
 from hysim.configs.config import Config
-from hysim.util.constants import ImagingMode, OutputFormat
+from hysim.simulator.renderer import Render
+from hysim.util.constants import ImagingMode
+from hysim.util.logging import log_level
 
 
-def _log_exporting(output_format: OutputFormat):
-    logging.info("Exporting results as a %s file", output_format.as_suffix)
+def _sum_frames(render: TensorXf, config: Config) -> TensorXf:
+    return dr.sum(render, 3) * config.sensor.camera.dt
 
+def _get_path(path: Path, config: Config) -> Path:
+    if path.is_absolute():
+        return path
+    return config.case_directory / path
+
+def _increment(path: Path, info: OutputItem):
+    if info.overwrite:
+       return path
+    # Increment number at end of file if it exists.
+    i = 1
+    stem = path.stem.rstrip("_")
+    while path.exists():
+        path = path.with_stem(f"{stem}_{str(i)}")
+        i += 1
+    return path
 
 def create_channel_names(wavelengths: list[float]) -> list[str]:
     """Generates list of channel names for the following
@@ -26,106 +47,110 @@ def create_channel_names(wavelengths: list[float]) -> list[str]:
     return [f"S0.{str(wavelength).replace('.', ',')}nm" for wavelength in wavelengths]
 
 
-# def export_gif(file_name: Path, case_directory: Path, frame_data: list[mit.Tensor]):
-#     pass
+def set_metadata(bmp: mi.Bitmap, metadata: dict[str,Any]):
+    m = bmp.metadata()
+    for key, value in metadata.items():
+        m[key] = value
 
-
-def export_exr(
-    file_name: Path,
-    case_directory: Path,
-    render_data: mit.Tensor,
-    wavelengths: list[float]
-):
-    _log_exporting(OutputFormat.EXR)
+def export_exr(config: Config, render: TensorXf, info: EXROutput, metadata:dict, frame_metadata:list[dict]):
+    if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
+        wavelengths = [  # User rolling average of narrow band values
+            (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
+            for _, spectrum in config.sensor_bands
+        ]
+    else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
+        wavelengths = config.sensor.reference_wavelengths  # Find user input for band reference values
 
     channel_names = create_channel_names(wavelengths)
-    if len(channel_names) != len(render_data[0, 0, :]):
+    if len(channel_names) != render.shape[2]:
         raise ValueError("Total reference wavelengths and channels should be the same")
 
-    if len(render_data[0, 0, :]) == 1:
+    if render.shape[2] == 1:
         pixel_format = mi.Bitmap.PixelFormat.Y
     else:
         pixel_format = mi.Bitmap.PixelFormat.MultiChannel
 
+    file_path = _get_path(info.path, config)
+    file_path = _increment(file_path, info)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    frame_count = render.shape[3]
+    if info.frames and frame_count > 1:
+        frames_dir = file_path.parent / f"frames_{info.ext.lstrip('.')}/"
+        frames_dir = _increment(frames_dir, info)
+        frames_dir.mkdir(exist_ok=True)
+        logging.info('Exporting %s frames at "%s"', info.ext, frames_dir)
+        for frame_index in range(render.shape[3]):
+            bitmap = mi.Bitmap(
+                render[..., frame_index],
+                pixel_format=pixel_format,
+                channel_names=channel_names,
+            )
+            set_metadata(bitmap, frame_metadata[frame_index])
+            bitmap.write_async(str(frames_dir / f"frame_{frame_index}{info.ext}"))
+
+    # ======================= #
+    all_frames = _sum_frames(render, config)
+    # ======================= #
+
     bitmap = mi.Bitmap(
-        render_data,
+        all_frames,
         pixel_format=pixel_format,
         channel_names=channel_names,
     )
+    set_metadata(bitmap, metadata)
 
-    # TODO: add more metadata relevant to HySim. E.g. HySim version, frame count etc
-    bitmap.metadata()["pixelAspectRatio"] = 1
-    bitmap.metadata()["screenWindowWidth"] = 1
-
-    if file_name.suffix != OutputFormat.EXR.as_suffix:
-        file_name = file_name.with_suffix(OutputFormat.EXR.as_suffix)
-
-    file_path = case_directory / file_name
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if file_path.is_file():
-        logging.info('The file "%s" already exists. Overwriting...', file_path)
-
+    logging.info('Exporting %s at "%s"', info.ext, file_path)
     bitmap.write_async(str(file_path))
 
-
-def export_bands(
-    output_directory: Path,
-    case_directory: Path,
-    render_data: mit.Tensor,
-    output_format: OutputFormat,
-):
-    """
-    Export render data as bands in the specified format.
-
-    Parameters
-    ----------
-    output_directory : Path
-        Relative directory where the output files will be saved.
-    case_directory : Path
-        The directory where the case files are located.
-    render_data : mit.Tensor
-        The render data from Mitsuba.
-    output_format : OutputFormat
-        The format in which the data should be exported (PNG or CSV).
-    """
-    if output_format == OutputFormat.EXR:
-        raise ValueError(
-            "Exporting bands to EXR format is not supported. Use export_exr instead."
-        )
-
-    _log_exporting(output_format)
-
-    path = case_directory / output_directory
-    if path.is_dir():
-        logging.debug(
-            'The directory "%s" already exists. The %s files inside may be overwritten.',
-            path,
-            output_format.as_suffix,
-        )
-    else:
-        path.mkdir(parents=True, exist_ok=True)
+def export_bands(config: Config, render: TensorXf, info: Union[PNGOutput, CSVOutput]):
+    dir_path = _get_path(info.path, config)
+    dir_path = _increment(dir_path, info)
+    dir_path.mkdir(parents=True, exist_ok=True)
 
     file_writer = None
-    if output_format == OutputFormat.PNG:
-        file_writer = lambda file_name, data: mi.util.write_bitmap(str(file_name), data)
-    elif output_format == OutputFormat.CSV:
-        file_writer = lambda file_name, data: np.savetxt(file_name, np.array(data), delimiter=",")
-    for i in range(len(render_data[0, 0, :])):
-        file_writer(path / f"band_{i}{output_format.as_suffix}", render_data[:, :, i])
+    if isinstance(info, PNGOutput):
+        file_writer = lambda file_path, data: mi.util.write_bitmap(str(file_path.with_suffix(info.ext)), data)
+    elif isinstance(info, CSVOutput):
+        file_writer = lambda file_path, data: np.savetxt(file_path.with_suffix(info.ext), np.array(data), delimiter=",")
+
+    for i in range(render.shape[2]):
+        file_writer(dir_path / f"band_{i}", render[:, :, i])
 
 
-def export(config: Config, data: mit.Tensor):
-    for info in config.case.output:
-        output_path = Path(info.file_name)
-        if info.format == OutputFormat.EXR:
-            if config.sensor.imaging_mode == ImagingMode.HYPERSPECTRAL:
-                wavelengths = [  # User rolling average of narrow band values
-                    (spectrum.wavelengths[0] + spectrum.wavelengths[1]) / 2
-                    for _, spectrum in config.sensor_bands
-                ]
-            else:  # imaging_mode == ImagingMode.MULTISPECTRAL:
-                wavelengths = config.sensor.reference_wavelengths # Find user input for band reference values
-            export_exr(output_path, config.case_directory, data, wavelengths)
-        else:
-            export_bands(output_path, config.case_directory, data, info.format)
+def export_gif(config: Config, render: TensorXf, info: GIFOutput):
+    file_path = _get_path(info.path, config)
+    file_path = _increment(file_path, info)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    frame_count = config.sensor.camera.frame_count
+    if info.frames and frame_count > 1:
+        frames_dir = file_path.parent / f"frames_{info.ext.lstrip('.')}/"
+        frames_dir = _increment(frames_dir, info)
+        frames_dir.mkdir(exist_ok=True)
+
+    def write_frame(frame_index):
+        bitmap = mi.util.convert_to_bitmap(render[..., frame_index])
+        image = Image.fromarray(np.asarray(bitmap))
+        if info.frames and frame_count > 1:
+            image.save(frames_dir / f"frame_{frame_index}{PNGOutput.ext}")
+        return image
+
+    with log_level(logging.INFO): # Hide PIL debugs logs when in debug mode
+        images = [write_frame(index) for index in range(frame_count)]
+        duration = config.sensor.camera.dt * 1000 if info.frame_duration is None else info.frame_duration
+        images[0].save(file_path, save_all=True, append_images=images[1:], duration=int(duration), loop=0)
+
+
+def export(config: Config, data: Render):
+    export_map = {
+        EXROutput: lambda c,i: export_exr(c, data.spectral, i, data.metadata, data.frame_metadata),
+        PNGOutput: lambda c,i: export_bands(c, _sum_frames(data.spectral, c), i),
+        CSVOutput: lambda c,i: export_bands(c, _sum_frames(data.spectral, c), i),
+        GIFOutput: lambda c,i: export_gif(c, data.rgb, i),
+    }
+
+    for info in vars(config.case.output).values():
+        if info is not None:
+            logging.info("Exporting results as %s file(s)", info.ext)
+            export_map[type(info)](config, info)

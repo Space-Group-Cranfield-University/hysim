@@ -28,10 +28,10 @@ def run(directory: str):
 
     case_directory = Path(directory)
 
-    if case_directory.is_absolute() is False:
+    if not case_directory.is_absolute():
         case_directory = Path.cwd() / case_directory
 
-    if case_directory.exists() is False:
+    if not case_directory.exists():
         logging.error('Case directory "%s" does not exist. Terminating HySim', case_directory)
         import sys
         sys.exit()

@@ -13,7 +13,7 @@ from hysim.configs.parts_config import PartsConfig, Part
 from hysim.configs.sensor_config import SensorConfig
 from hysim.mitsuba.bsdfs import BSDF
 from hysim.mitsuba.spectra import Spectrum
-from hysim.util.constants import ConfigType, ImagingMode, OutputFormat
+from hysim.util.constants import ConfigType, ImagingMode
 
 
 def _exit_on_error():
@@ -86,8 +86,7 @@ class Config:
         # Load spectrum file
         self._sensor_bands = dh.read_spd(case_files[self.sensor.spectrum_file], self.sensor.imaging_mode)
 
-        if (self.sensor.imaging_mode == ImagingMode.MULTISPECTRAL
-                and any(x.format == OutputFormat.EXR for x in self.case.output)):
+        if self.sensor.imaging_mode == ImagingMode.MULTISPECTRAL and self.case.output.requires_spectral:
             error_message = None
             input_value = "N/A"
             if self.sensor.reference_wavelengths is None:

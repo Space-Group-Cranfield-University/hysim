@@ -12,6 +12,11 @@ class Camera:
     shutter_time: Optional[NonNegativeFloat] = 0
     frame_count: Optional[PositiveInt] = 1
 
+    @property
+    def dt(self):
+        """In seconds"""
+        return self.shutter_time/self.frame_count
+
 
 @dataclass(frozen=True)
 class Film:

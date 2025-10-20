@@ -32,19 +32,6 @@ class ImagingMode(StrEnum):
     determined by the number of band response columns provided by the data file.
     """
 
-
-class OutputFormat(StrEnum):
-    """A list of output formats for the simulation data"""
-
-    EXR = "exr"
-    PNG = "png"
-    CSV = "csv"
-    @property
-    def as_suffix(self) -> str:
-        """Returns the file extension for the output format"""
-        return f".{self.value}"
-
-
 class PositionFormat(StrEnum):
     STATE_ECI = "state"
     STATE_LVLH = "lvlh"
